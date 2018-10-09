@@ -6,7 +6,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import accuracy_score
 
 # digit_train_set = pd.read_csv('../../resources/digit-recognizer/train.csv')
-digit_train_set = pd.read_csv('../../resources/digit-recognizer/jason_1000.csv')
+digit_train_set = pd.read_csv('../../resources/digit-recognizer/jason_train_1000.csv')
 # digit_train_set = pd.read_csv('../../resources/digit-recognizer/jason_10000.csv')
 
 
