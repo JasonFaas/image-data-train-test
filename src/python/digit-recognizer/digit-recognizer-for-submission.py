@@ -51,7 +51,7 @@ while yet_to_process > 0:
     if processed == 0:
         result_df.to_csv(output_filename, index=False)
     else:
-        result_df.to_csv('output_filename.csv', mode='a', index=False, header=False)
+        result_df.to_csv(output_filename, mode='a', index=False, header=False)
 
     # update processing info
     yet_to_process -= to_test
