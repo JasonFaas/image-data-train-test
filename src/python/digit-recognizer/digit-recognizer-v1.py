@@ -1,3 +1,9 @@
+#
+# Basic v1 version is simple knn
+#
+#
+
+
 import numpy as np
 import cv2 as cv
 import pandas as pd
