@@ -1,3 +1,7 @@
+# Large resource folders
+/resources/digit-recognizer
+/resources/ocean-ship-detection
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
