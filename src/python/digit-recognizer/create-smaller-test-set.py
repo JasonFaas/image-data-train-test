@@ -10,7 +10,7 @@ csv_read = '%sdigit-recognizer/train.csv' % resources_path
 digit_train_set = pd.read_csv(csv_read)
 dts_by_label = {}
 
-total_new_set_size = 1000*1
+total_new_set_size = 1000*4
 row_count = str(total_new_set_size)
 csv_write = '%sdigit-recognizer/jason_train_%s.csv' % (resources_path, row_count)
 label_count = 10

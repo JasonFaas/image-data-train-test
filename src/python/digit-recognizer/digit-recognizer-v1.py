@@ -13,7 +13,7 @@ from sklearn.metrics import accuracy_score
 from image_test_space import DisplayImage
 
 # digit_train_set = pd.read_csv('../../resources/digit-recognizer/train.csv')
-digit_train_set = pd.read_csv('../../resources/digit-recognizer/jason_train_5000.csv')
+digit_train_set = pd.read_csv('../../resources/digit-recognizer/jason_train_4000.csv')
 
 
 
