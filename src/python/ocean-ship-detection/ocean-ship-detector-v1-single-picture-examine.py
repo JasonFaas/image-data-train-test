@@ -2,12 +2,17 @@ import numpy as np
 import cv2 as cv
 import pandas as pd
 from image_modifications import ImageModifications
+import matplotlib
+matplotlib.use("MacOSX")
+from matplotlib import pyplot as plt
 
 
 train_images_filepath = '../../../../image-data-train-test-large-data/airbus-ocean-ship-detection-pictures/train_v2/'
 train_image_sub_folder = '0/'
-filename_with = '0a0df8299.jpg'
-filename_without = '0a00a69de.jpg'
+# filename_with = '0a0df8299.jpg'
+filename_with = '002868a5c.jpg'
+# filename_without = '0a00a69de.jpg'  # simple blue ocean
+filename_without = '0a0aeea56.jpg'  # blue ocean with clouds
 
 training_segmentations_filename = '../../resources/ocean-ship-detection/train_ship_segmentations_v2.csv'
 
@@ -33,10 +38,19 @@ def mask_from_filename(filename):
 mask_with = mask_from_filename(filename_with)
 mask_without = mask_from_filename(filename_without)
 
-cv.imshow('with', img_with)
 cv.imshow('without', img_without)
-cv.imshow('mask_with', mask_with)
+blur_without = cv.medianBlur(img_without, 5)
+cv.imshow('without_blur', blur_without)
 cv.imshow('mask_without', mask_without)
+cv.imshow('mask_with', mask_with)
+cv.imshow('with', img_with)
+blur_with = cv.GaussianBlur(img_with, (5, 5), 5)
+hue, sat, val = cv.split(cv.cvtColor(blur_with, cv.COLOR_BGR2HSV))
+cv.imshow('with_hue', hue)
+
+plt.hist(hue.ravel(),bins=int(180/18),range=[0,180]); plt.show()
+# plt.hist(gre.ravel(),bins=16,range=[0,256]); plt.show()
+# plt.hist(red.ravel(),bins=16,range=[0,256]); plt.show()
 
 cv.waitKey(0)
 cv.destroyAllWindows()
