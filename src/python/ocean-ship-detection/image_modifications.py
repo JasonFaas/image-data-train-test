@@ -5,8 +5,9 @@ import pandas as pd
 
 class ImageModifications:
 
-    def __init__(self, img_sz):
+    def __init__(self, img_sz, segments_df):
         self.img_sz = img_sz
+        self.segments_df = segments_df
 
     @staticmethod
     def get_image_from_values(self, image_values):
@@ -26,3 +27,8 @@ class ImageModifications:
                 pixels = int(split[idx + 1])
                 mask_1d[start_point:start_point+pixels] = 255
 
+    def mask_from_filename(self, filename):
+        img_seg_df = self.segments_df.loc[self.segments_df['ImageId'] == filename]
+        mask_with = np.zeros((self.img_sz, self.img_sz, 1), dtype=np.uint8)
+        self.update_mask_with_segments(mask_with, img_seg_df)
+        return np.swapaxes(mask_with, 0, 1)

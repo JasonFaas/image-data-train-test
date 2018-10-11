@@ -5,6 +5,8 @@ from image_modifications import ImageModifications
 import matplotlib
 matplotlib.use("MacOSX")
 from matplotlib import pyplot as plt
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import accuracy_score
 
 # TODO identify if image even has a ship (maybe by pixel count, maybe TF)
 # TODO load up large amounts of true data and see what it says: pixels in average ship, how many ships per positive image, shape of average ship, MORE
@@ -23,49 +25,69 @@ training_segmentations_filename = '../../resources/ocean-ship-detection/train_sh
 segments_df = pd.read_csv(training_segmentations_filename, nrows=100000)
 segments_df.fillna('-1', inplace=True)
 
-ship_sizes = {}
-empty_ship_sizes = {}
+image_sz = 768
+image_mod = ImageModifications(image_sz, segments_df)
+
+
 
 import os
+
+bucket_count = 16
+assert image_sz % bucket_count == 0
+bucket_sz = 49
+
+train_x_list = []
+train_y_list = []
+test_x_list = []
+test_y_list = []
 
 folder_to_examine = train_images_filepath + train_image_sub_folder
 for filename in os.listdir(folder_to_examine):
     root, ext = os.path.splitext(filename)
-    if root.startswith('000') and ext == '.jpg':
-        df_segments = segments_df.loc[segments_df['ImageId'] == filename]
-        for row in df_segments.values:
-            split = row[1].split(' ')
-            if len(split) < 2:
-                empty_ship_sizes[filename] = 0
-                continue
-            pixel_count = 0
-            for idx in range(0, len(split), 2):
-                pixel_count += int(split[idx + 1])
-            ship_sizes[filename] = pixel_count
+    # if (root.startswith('09') or root.startswith('08') or root.startswith('07') or root.startswith('06') or root.startswith('05')) and ext == '.jpg':
+    if (root.startswith('099') or root.startswith('097')) and ext == '.jpg':
+        image_to_log = cv.imread(train_images_filepath + train_image_sub_folder + filename)
+        image_to_log = cv.blur(image_to_log, (5,5))
+        mask_to_log = image_mod.mask_from_filename(filename)
+        for x_start in range(0, image_sz, bucket_sz):
+            for y_start in range(0, image_sz, bucket_sz):
+                x_train = np.array([np.average(image_to_log[x_start:x_start+bucket_sz, y_start:y_start+bucket_sz, 0]),
+                                   np.average(image_to_log[x_start:x_start+bucket_sz, y_start:y_start+bucket_sz, 1]),
+                                   np.average(image_to_log[x_start:x_start+bucket_sz, y_start:y_start+bucket_sz, 2])], dtype=np.double)
+                y_train = np.count_nonzero(mask_to_log[0:bucket_sz, 0:bucket_sz]) > bucket_sz
+                if root.startswith('097'):
+                    test_x_list.extend([x_train])
+                    test_y_list.extend([y_train])
+                else:
+                    train_x_list.extend([x_train])
+                    train_y_list.extend([y_train])
 
 
 # TODO 1. load up picture
-# TODO 2. blur picture
-# TODO 3. get median pixel r,g,b value
-# TODO 4. subtract median pixel from everything
-# TODO 5. separate picture into 16x16 buckets (49 * 49 pixels)
-# TODO 6. log pixel info about picture into knn ready info, label is if ship is in picture, could also use pixel count instead of T/F for continuous ml options
+# TODO 2. separate picture into 49 x 49 pixel buckets (16 * 16 buckets per bpicture)
+# TODO 3. log pixel info about picture into knn ready info (average r, g, b value), label is if ship is in picture, could also use pixel count instead of T/F for continuous ml options
 # TODO 7. Separate into test and train data set
-# TODO on test data, do steps 2-5, knn (or other) about whether area is t/f
+# TODO on test data, do steps 2 & 3, knn (or other) about whether area is t/f
+
+for neighbor_itr in range(3, 4):
+    print("neighbors:" + str(neighbor_itr))
+    knn = KNeighborsClassifier(n_neighbors=neighbor_itr)
+    knn.fit(train_x_list, train_y_list)
+    pred = knn.predict(test_x_list)
+    y_test_raveled = test_y_list
+    score = accuracy_score(y_test_raveled, pred)
+    tf_result = y_test_raveled == pred
+    print(str(neighbor_itr) + ":" + str(score))
+
 
 
 # img_with = cv.imread(train_images_filepath + train_image_sub_folder + filename_with)
 # img_without = cv.imread(train_images_filepath + train_image_sub_folder + filename_without)
 #
-# image_mod = ImageModifications(img_with.shape[0])
 # img_sz = img_with.shape[0]
 #
 #
-# def mask_from_filename(filename):
-#     img_seg_df = segments_df.loc[segments_df['ImageId'] == filename]
-#     mask_with = np.zeros((img_sz, img_sz, 1), dtype=np.uint8)
-#     image_mod.update_mask_with_segments(mask_with, img_seg_df)
-#     return np.swapaxes(mask_with, 0, 1)
+
 #
 #
 # mask_with = mask_from_filename(filename_with)
