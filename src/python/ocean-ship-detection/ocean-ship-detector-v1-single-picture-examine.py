@@ -24,7 +24,7 @@ segments_df.fillna('-1', inplace=True)
 img_with = cv.imread(train_images_filepath + train_image_sub_folder + filename_with)
 img_without = cv.imread(train_images_filepath + train_image_sub_folder + filename_without)
 
-image_mod = ImageModifications(img_with.shape[0])
+image_mod = ImageModifications(img_with.shape[0], None)
 img_sz = img_with.shape[0]
 
 
