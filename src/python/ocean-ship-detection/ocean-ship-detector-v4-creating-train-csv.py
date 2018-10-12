@@ -52,12 +52,13 @@ for idx, filename_part in enumerate(hex_values):
         mask_to_log = image_mod.mask_from_filename(no_folder_filename)
         for x_start in range(0, image_sz, bucket_sz):
             for y_start in range(0, image_sz, bucket_sz):
-                x_train = np.array([np.average(image_to_log[x_start:x_start+bucket_sz, y_start:y_start+bucket_sz, 0]),
-                                   np.average(image_to_log[x_start:x_start+bucket_sz, y_start:y_start+bucket_sz, 1]),
-                                   np.average(image_to_log[x_start:x_start+bucket_sz, y_start:y_start+bucket_sz, 2])], dtype=np.double)
+                # TODO consider skip every other non-ship frame if on same line (basically cut data in half from fewer 'falses')
+                blue_avg = np.average(image_to_log[x_start:x_start+bucket_sz, y_start:y_start+bucket_sz, 0])
+                green_avg = np.average(image_to_log[x_start:x_start+bucket_sz, y_start:y_start+bucket_sz, 1])
+                red_avg = np.average(image_to_log[x_start:x_start+bucket_sz, y_start:y_start+bucket_sz, 2])
                 y_train = np.count_nonzero(mask_to_log[x_start:x_start+bucket_sz, y_start:y_start+bucket_sz]) > bucket_sz
-                train_dict_top_level[no_folder_filename + "_" + str(x_start) + "_" + str(y_start)] = [y_train, x_train]
-    train_df_top_level = pd.DataFrame.from_dict(train_dict_top_level, orient='index', columns=['ship_in_image', 'bgr_values'])
+                train_dict_top_level[no_folder_filename + "_" + str(x_start) + "_" + str(y_start)] = [y_train, blue_avg, green_avg, red_avg]
+    train_df_top_level = pd.DataFrame.from_dict(train_dict_top_level, orient='index', columns=['ship_in_image', 'blue_avg', 'green_avg', 'red_avg'])
     if idx == 0:
         train_df_top_level.to_csv(output_filename, index=False)
     else:
