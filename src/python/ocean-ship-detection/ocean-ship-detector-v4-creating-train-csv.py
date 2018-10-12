@@ -25,12 +25,12 @@ image_sz = 768
 assert sample_image.shape[0] == image_sz
 image_mod = ImageModifications(image_sz, segments_df)
 
-top_level_bucket_count = 12
-top_level_bucket_sz = 64
+top_level_bucket_count = 16
+top_level_bucket_sz = 48
 assert image_sz % top_level_bucket_count == 0
 assert int(image_sz / top_level_bucket_count) == top_level_bucket_sz
 
-second_level_bucket_count = 16
+second_level_bucket_count = 12
 second_level_bucket_sz = 4
 assert top_level_bucket_sz % second_level_bucket_count == 0
 assert int(top_level_bucket_sz / second_level_bucket_count) == second_level_bucket_sz
@@ -38,7 +38,7 @@ assert int(top_level_bucket_sz / second_level_bucket_count) == second_level_buck
 hex_values = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f']
 assert len(hex_values) == 16
 
-filename_start = "09"
+filename_start = "08"
 top_level_output_filename = resources + "jason_top_level_" + str(top_level_bucket_sz) + "_" + filename_start + ".csv"
 second_level_output_filename = resources + "jason_second_level_" + str(top_level_bucket_sz) + "_" + str(second_level_bucket_sz) + "_" + filename_start + ".csv"
 

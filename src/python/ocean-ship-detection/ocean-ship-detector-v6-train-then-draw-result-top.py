@@ -22,10 +22,14 @@ segments_df.fillna('-1', inplace=True)
 image_mod = ImageModifications(test_image.shape[0], segments_df)
 
 
+img_size = test_image.shape[0]
+block_pixels = 48
+blocks = int(img_size / block_pixels)
+blocks_in_image = blocks * blocks
 
 sub_image_dtype = {'filename':str, 'ship_in_image': bool, 'blue_avg': np.double, 'green_avg': np.double, 'red_avg': np.double}
-train_set = pd.read_csv(resources + 'jason_top_level_64_08.csv', dtype=sub_image_dtype)
-test_set = pd.read_csv(resources + 'jason_top_level_64_070.csv', dtype=sub_image_dtype)
+train_set = pd.read_csv(resources + 'jason_top_level_' + str(block_pixels) + '_08.csv', dtype=sub_image_dtype)
+test_set = pd.read_csv(resources + 'jason_top_level_' + str(block_pixels) + '_070.csv', dtype=sub_image_dtype)
 
 x_columns = ['blue_avg', 'green_avg', 'red_avg']
 y_column = ['ship_in_image']
@@ -37,12 +41,9 @@ total_test_x_list = test_set[x_columns].values
 total_test_y_list = test_set[y_column].values
 
 
-# TODO unhardcode this
-blocks = 12
-block_pixels = 64
-blocks_in_image = blocks * blocks
-
-for neighbor_itr in range(3, 4):
+for neighbor_itr in range(1, 10):
+    xor_count = 0
+    and_count = 0
     print("neighbors:" + str(neighbor_itr))
     knn = KNeighborsClassifier(n_neighbors=neighbor_itr)
     knn.fit(train_x_list, train_y_list.ravel())
@@ -50,15 +51,15 @@ for neighbor_itr in range(3, 4):
 
         filename = str(total_test_file_list[test_start])
         filename = filename[2:filename.find("_")]
-        print("Filename here:" + filename)
         test_x_list = total_test_x_list[test_start:test_start + blocks_in_image]
         test_y_list = total_test_y_list[test_start:test_start + blocks_in_image]
 
         pred = knn.predict(test_x_list)
         y_test_raveled = test_y_list.ravel()
         tf_result = y_test_raveled == pred
+        xor_count += np.count_nonzero(np.logical_xor(y_test_raveled, pred))
+        and_count += np.count_nonzero(np.logical_and(y_test_raveled, pred))
 
-        # TODO remove break after 1st success
         actual_mask = image_mod.mask_from_filename(filename)
         actual_mask = actual_mask.copy()
         if np.count_nonzero(pred) > 0 or np.count_nonzero(y_test_raveled) > 0:
@@ -80,13 +81,14 @@ for neighbor_itr in range(3, 4):
                         thickness_to_show = 1
                     start_pt = (x_start, y_start)
                     stop_pt = (x_start + block_pixels, y_start + block_pixels)
-                    print(filename)
                     cv.rectangle(actual_mask, start_pt, stop_pt, brightness, thickness=thickness_to_show)
             cv.imshow("actual_mask", actual_mask)
-            if cv.waitKey(0) & 0xFF == ord('q'):
+            quick_img = cv.imread(train_images_filepath + train_image_sub_folder + filename)
+            cv.imshow('quick', quick_img)
+            if cv.waitKey(10) & 0xFF == ord('q'):
                 break
-
-
+    print('\txor_count' + ":" + str(xor_count))
+    print('\tand_count' + ":" + str(and_count))
 
 
 
