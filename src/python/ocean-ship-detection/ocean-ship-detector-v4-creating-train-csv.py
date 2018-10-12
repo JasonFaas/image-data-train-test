@@ -25,13 +25,21 @@ image_sz = 768
 assert sample_image.shape[0] == image_sz
 image_mod = ImageModifications(image_sz, segments_df)
 
-top_level_bucket_count = 16
-top_level_bucket_sz = 48
+larger_bucket = True
+if larger_bucket:
+    top_level_bucket_count = 16
+    top_level_bucket_sz = 48
+    second_level_bucket_count = 12
+    second_level_bucket_sz = 4
+else:
+    top_level_bucket_count = 24
+    top_level_bucket_sz = 32
+    second_level_bucket_count = 8
+    second_level_bucket_sz = 4
+
 assert image_sz % top_level_bucket_count == 0
 assert int(image_sz / top_level_bucket_count) == top_level_bucket_sz
 
-second_level_bucket_count = 12
-second_level_bucket_sz = 4
 assert top_level_bucket_sz % second_level_bucket_count == 0
 assert int(top_level_bucket_sz / second_level_bucket_count) == second_level_bucket_sz
 
