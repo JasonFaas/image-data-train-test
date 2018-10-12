@@ -77,15 +77,15 @@ for idx, filename_part in enumerate(hex_values):
                             train_dict_second_level[no_folder_filename + "_" + str(x_second_start) + "_" + str(y_second_start)] = [y_train, blue_avg, green_avg, red_avg]
     train_df_top_level = pd.DataFrame.from_dict(train_dict_top_level, orient='index', columns=['ship_in_image', 'blue_avg', 'green_avg', 'red_avg'])
     train_df_top_level.reset_index(inplace=True)
-    train_df_top_level.rename(index=str, columns={"index":"filename"})
+    train_df_top_level.rename(index=str, columns={"index":"filename"}, inplace=True)
     if idx == 0:
         train_df_top_level.to_csv(top_level_output_filename, index=False)
     else:
         train_df_top_level.to_csv(top_level_output_filename, mode='a', index=False, header=False)
 
 train_df_second_level = pd.DataFrame.from_dict(train_dict_second_level, orient='index', columns=['ship_in_image', 'blue_avg', 'green_avg', 'red_avg'])
-train_df_top_level.reset_index(inplace=True)
-train_df_top_level.rename(index=str, columns={"index":"filename"})
+train_df_second_level.reset_index(inplace=True)
+train_df_second_level.rename(index=str, columns={"index":"filename"}, inplace=True)
 train_df_second_level.to_csv(second_level_output_filename, index=False)
 
 print("\nfinished")
