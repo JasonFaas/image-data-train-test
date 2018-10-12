@@ -42,8 +42,9 @@ total_test_y_list = test_set[y_column].values
 
 
 for neighbor_itr in range(1, 10):
-    xor_count = 0
     and_count = 0
+    bad_guess_count = 0
+    non_pred_count = 0
     print("neighbors:" + str(neighbor_itr))
     knn = KNeighborsClassifier(n_neighbors=neighbor_itr)
     knn.fit(train_x_list, train_y_list.ravel())
@@ -57,12 +58,15 @@ for neighbor_itr in range(1, 10):
         pred = knn.predict(test_x_list)
         y_test_raveled = test_y_list.ravel()
         tf_result = y_test_raveled == pred
-        xor_count += np.count_nonzero(np.logical_xor(y_test_raveled, pred))
-        and_count += np.count_nonzero(np.logical_and(y_test_raveled, pred))
 
         actual_mask = image_mod.mask_from_filename(filename)
         actual_mask = actual_mask.copy()
         if np.count_nonzero(pred) > 0 or np.count_nonzero(y_test_raveled) > 0:
+            this_and_count = np.count_nonzero(np.logical_and(y_test_raveled, pred))
+            and_count += this_and_count
+            bad_guess_count += (np.count_nonzero(pred) - this_and_count)
+            non_pred_count += (np.count_nonzero(y_test_raveled) - this_and_count)
+
             for idx, guess in enumerate(pred):
                 actual = y_test_raveled[idx]
                 x_start = (idx % blocks) * block_pixels
@@ -87,8 +91,9 @@ for neighbor_itr in range(1, 10):
             cv.imshow('quick', quick_img)
             if cv.waitKey(10) & 0xFF == ord('q'):
                 break
-    print('\txor_count' + ":" + str(xor_count))
     print('\tand_count' + ":" + str(and_count))
+    print('\tbad_guess_scount' + ":" + str(bad_guess_count))
+    print('\tnon_pred_count' + ":" + str(non_pred_count))
 
 
 

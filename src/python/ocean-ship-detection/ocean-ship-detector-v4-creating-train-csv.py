@@ -38,7 +38,10 @@ assert int(top_level_bucket_sz / second_level_bucket_count) == second_level_buck
 hex_values = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f']
 assert len(hex_values) == 16
 
-filename_start = "08"
+train_files = False
+filename_start = "070"
+
+
 top_level_output_filename = resources + "jason_top_level_" + str(top_level_bucket_sz) + "_" + filename_start + ".csv"
 second_level_output_filename = resources + "jason_second_level_" + str(top_level_bucket_sz) + "_" + str(second_level_bucket_sz) + "_" + filename_start + ".csv"
 
@@ -60,20 +63,27 @@ for idx, filename_part in enumerate(hex_values):
         mask_to_log = image_mod.mask_from_filename(no_folder_filename)
         # TODO cleanup this REPETITIVE code
         for x_top_start in range(0, image_sz, top_level_bucket_sz):
+            prev_y_train = True
             for y_top_start in range(0, image_sz, top_level_bucket_sz):
-                # TODO consider skip every other non-ship frame if on same line (basically cut data in half from fewer 'falses')
+                y_train = np.count_nonzero(mask_to_log[x_top_start:x_top_start + top_level_bucket_sz, y_top_start:y_top_start + top_level_bucket_sz]) > top_level_bucket_sz
+                # skip adding info if previous and current and next are all false
+                if train_files and not prev_y_train and not y_train and y_top_start + top_level_bucket_sz != image_sz:
+                    next_y_train = np.count_nonzero(mask_to_log[x_top_start:x_top_start + top_level_bucket_sz, y_top_start + top_level_bucket_sz:y_top_start + top_level_bucket_sz*2]) > top_level_bucket_sz
+                    if not next_y_train:
+                        prev_y_train = True
+                        continue
                 blue_avg = np.average(image_to_log[x_top_start:x_top_start + top_level_bucket_sz, y_top_start:y_top_start + top_level_bucket_sz, 0])
                 green_avg = np.average(image_to_log[x_top_start:x_top_start + top_level_bucket_sz, y_top_start:y_top_start + top_level_bucket_sz, 1])
                 red_avg = np.average(image_to_log[x_top_start:x_top_start + top_level_bucket_sz, y_top_start:y_top_start + top_level_bucket_sz, 2])
-                y_train = np.count_nonzero(mask_to_log[x_top_start:x_top_start + top_level_bucket_sz, y_top_start:y_top_start + top_level_bucket_sz]) > top_level_bucket_sz
                 train_dict_top_level[no_folder_filename + "_" + str(x_top_start) + "_" + str(y_top_start)] = [y_train, blue_avg, green_avg, red_avg]
+                prev_y_train = y_train
                 if y_train:
                     for x_second_start in range(x_top_start, x_top_start + top_level_bucket_sz, second_level_bucket_sz):
                         for y_second_start in range(y_top_start, y_top_start + top_level_bucket_sz, second_level_bucket_sz):
+                            y_train = np.count_nonzero(mask_to_log[x_second_start:x_second_start + second_level_bucket_sz,y_second_start:y_second_start + second_level_bucket_sz]) > second_level_bucket_sz
                             blue_avg = np.average(image_to_log[x_second_start:x_second_start + second_level_bucket_sz,y_second_start:y_second_start + second_level_bucket_sz, 0])
                             green_avg = np.average(image_to_log[x_second_start:x_second_start + second_level_bucket_sz,y_second_start:y_second_start + second_level_bucket_sz, 1])
                             red_avg = np.average(image_to_log[x_second_start:x_second_start + second_level_bucket_sz,y_second_start:y_second_start + second_level_bucket_sz, 2])
-                            y_train = np.count_nonzero(mask_to_log[x_second_start:x_second_start + second_level_bucket_sz,y_second_start:y_second_start + second_level_bucket_sz]) > second_level_bucket_sz
                             train_dict_second_level[no_folder_filename + "_" + str(x_second_start) + "_" + str(y_second_start)] = [y_train, blue_avg, green_avg, red_avg]
     train_df_top_level = pd.DataFrame.from_dict(train_dict_top_level, orient='index', columns=['ship_in_image', 'blue_avg', 'green_avg', 'red_avg'])
     train_df_top_level.reset_index(inplace=True)
