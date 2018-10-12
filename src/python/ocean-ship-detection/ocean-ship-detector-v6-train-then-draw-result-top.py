@@ -28,8 +28,8 @@ blocks = int(img_size / block_pixels)
 blocks_in_image = blocks * blocks
 
 sub_image_dtype = {'filename':str, 'ship_in_image': bool, 'blue_avg': np.double, 'green_avg': np.double, 'red_avg': np.double}
-train_set = pd.read_csv(resources + 'jason_top_level_' + str(block_pixels) + '_08.csv', dtype=sub_image_dtype)
-test_set = pd.read_csv(resources + 'jason_top_level_' + str(block_pixels) + '_070.csv', dtype=sub_image_dtype)
+train_set = pd.read_csv(resources + 'jason_top_level_train_' + str(block_pixels) + '_08.csv', dtype=sub_image_dtype)
+test_set = pd.read_csv(resources + 'jason_top_level_test_' + str(block_pixels) + '_080.csv', dtype=sub_image_dtype)
 
 x_columns = ['blue_avg', 'green_avg', 'red_avg']
 y_column = ['ship_in_image']
@@ -41,7 +41,7 @@ total_test_x_list = test_set[x_columns].values
 total_test_y_list = test_set[y_column].values
 
 
-for neighbor_itr in range(1, 10):
+for neighbor_itr in range(4, 5):
     and_count = 0
     bad_guess_count = 0
     non_pred_count = 0

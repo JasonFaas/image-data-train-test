@@ -11,8 +11,8 @@ import glob
 
 
 train_images_filepath = '../../../../image-data-train-test-large-data/airbus-ocean-ship-detection-pictures/train_v2/'
-train_image_sub_folder = '0/'
-sample_file_name = '0a0df8299.jpg'
+train_image_sub_folder = '1/'
+sample_file_name = '1a0a0f60d.jpg'
 
 resources = '../../resources/ocean-ship-detection/'
 training_segmentations_filename = '%strain_ship_segmentations_v2.csv' % resources
@@ -38,12 +38,15 @@ assert int(top_level_bucket_sz / second_level_bucket_count) == second_level_buck
 hex_values = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f']
 assert len(hex_values) == 16
 
-train_files = False
-filename_start = "070"
+train_files = True
+output_traintest_name = "test"
+if train_files:
+    output_traintest_name = "train"
+filename_start = "1"
 
 
-top_level_output_filename = resources + "jason_top_level_" + str(top_level_bucket_sz) + "_" + filename_start + ".csv"
-second_level_output_filename = resources + "jason_second_level_" + str(top_level_bucket_sz) + "_" + str(second_level_bucket_sz) + "_" + filename_start + ".csv"
+top_level_output_filename = resources + "jason_top_level_" + output_traintest_name + "_" + str(top_level_bucket_sz) + "_" + filename_start + ".csv"
+second_level_output_filename = resources + "jason_second_level_" + output_traintest_name + "_" + str(top_level_bucket_sz) + "_" + str(second_level_bucket_sz) + "_" + filename_start + ".csv"
 
 
 folder_to_examine = train_images_filepath + train_image_sub_folder
