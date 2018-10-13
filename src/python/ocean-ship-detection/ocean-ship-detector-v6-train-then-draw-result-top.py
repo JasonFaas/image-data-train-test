@@ -23,13 +23,13 @@ image_mod = ImageModifications(test_image.shape[0], segments_df)
 
 
 img_size = test_image.shape[0]
-block_pixels = 48
+block_pixels = 32
 blocks = int(img_size / block_pixels)
 blocks_in_image = blocks * blocks
 
 sub_image_dtype = {'filename':str, 'ship_in_image': bool, 'blue_avg': np.double, 'green_avg': np.double, 'red_avg': np.double}
-train_set = pd.read_csv(resources + 'jason_top_level_train_' + str(block_pixels) + '_08.csv', dtype=sub_image_dtype)
-test_set = pd.read_csv(resources + 'jason_top_level_test_' + str(block_pixels) + '_080.csv', dtype=sub_image_dtype)
+train_set = pd.read_csv(resources + "train/" + 'jason_top_level_' + str(block_pixels) + '_0a.csv', dtype=sub_image_dtype)
+test_set = pd.read_csv(resources + "test/" + 'jason_top_level_' + str(block_pixels) + '_0c.csv', dtype=sub_image_dtype)
 
 x_columns = ['blue_avg', 'green_avg', 'red_avg']
 y_column = ['ship_in_image']
@@ -40,14 +40,16 @@ total_test_file_list = test_set[filename_column].values
 total_test_x_list = test_set[x_columns].values
 total_test_y_list = test_set[y_column].values
 
+review_image = True
 
-for neighbor_itr in range(4, 5):
+for neighbor_itr in range(14, 15, 1):
     and_count = 0
     bad_guess_count = 0
     non_pred_count = 0
     print("neighbors:" + str(neighbor_itr))
     knn = KNeighborsClassifier(n_neighbors=neighbor_itr)
     knn.fit(train_x_list, train_y_list.ravel())
+    print("training model loaded")
     for test_start in range(0, len(total_test_y_list), blocks_in_image):
 
         filename = str(total_test_file_list[test_start])
@@ -67,30 +69,39 @@ for neighbor_itr in range(4, 5):
             bad_guess_count += (np.count_nonzero(pred) - this_and_count)
             non_pred_count += (np.count_nonzero(y_test_raveled) - this_and_count)
 
-            for idx, guess in enumerate(pred):
-                actual = y_test_raveled[idx]
-                x_start = (idx % blocks) * block_pixels
-                y_start = int(idx / blocks) * block_pixels
-                if guess or actual:
-                    brightness = 0
-                    thickness_to_show = 0
-                    if guess and actual:
-                        brightness = 255
-                        thickness_to_show = 5
-                    elif guess:
-                        brightness = 170
-                        thickness_to_show = 3
-                    elif actual:
-                        brightness = 100
-                        thickness_to_show = 1
-                    start_pt = (x_start, y_start)
-                    stop_pt = (x_start + block_pixels, y_start + block_pixels)
-                    cv.rectangle(actual_mask, start_pt, stop_pt, brightness, thickness=thickness_to_show)
-            cv.imshow("actual_mask", actual_mask)
-            quick_img = cv.imread(train_images_filepath + train_image_sub_folder + filename)
-            cv.imshow('quick', quick_img)
-            if cv.waitKey(10) & 0xFF == ord('q'):
-                break
+            if review_image:
+                quick_img = cv.imread(train_images_filepath + train_image_sub_folder + filename)
+                blur_and_minimize = image_mod.adaptive_thresh(quick_img)
+                # blur_and_minimize = image_mod.blur_and_minimize(quick_img)
+
+
+                for idx, guess in enumerate(pred):
+                    actual = y_test_raveled[idx]
+                    x_start = (idx % blocks) * block_pixels
+                    y_start = int(idx / blocks) * block_pixels
+                    if guess or actual:
+                        brightness = 0
+                        thickness_to_show = 0
+                        if guess and actual:
+                            brightness = 255
+                            thickness_to_show = 5
+                        elif actual:
+                            brightness = 170
+                            thickness_to_show = 3
+                        elif guess:
+                            brightness = 100
+                            thickness_to_show = 1
+                        start_pt = (x_start, y_start)
+                        stop_pt = (x_start + block_pixels, y_start + block_pixels)
+                        cv.rectangle(actual_mask, start_pt, stop_pt, brightness, thickness=thickness_to_show)
+                        if review_image and thickness_to_show != 1:
+                            cv.rectangle(blur_and_minimize, start_pt, stop_pt, (brightness, brightness, brightness), thickness=thickness_to_show)
+
+                cv.imshow("actual_mask", actual_mask)
+                cv.imshow('quick', quick_img)
+                cv.imshow('quick_blur_and_minimize', blur_and_minimize)
+                if cv.waitKey(0) & 0xFF == ord('q'):
+                    break
     print('\tand_count' + ":" + str(and_count))
     print('\tbad_guess_scount' + ":" + str(bad_guess_count))
     print('\tnon_pred_count' + ":" + str(non_pred_count))

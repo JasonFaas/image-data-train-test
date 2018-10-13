@@ -32,3 +32,38 @@ class ImageModifications:
         mask_with = np.zeros((self.img_sz, self.img_sz, 1), dtype=np.uint8)
         self.update_mask_with_segments(mask_with, img_seg_df)
         return np.swapaxes(mask_with, 0, 1)
+
+    # TODO Write this, consider lots of clouds too (though that might not be a concern)
+    def blur_and_minimize(self, img):
+        img = cv.blur(img, (3,3))
+        logical_and = np.ones(img.shape[0:2], dtype=bool)
+        for place in range(0, 3):
+            color_info = img[:, :, place]
+            color_avg = np.average(color_info)
+            color_std = np.std(color_info) * 1
+            color_std = max((color_std, 20))
+            logical_and = np.logical_and(logical_and, color_info > color_avg - color_std)
+            logical_and = np.logical_and(logical_and, color_info < color_avg + color_std)
+        for place in range(0, 3):
+            color_info = img[:, :, place]
+            color_info[logical_and] = 0
+        img = cv.blur(img, (3, 3))
+        return img
+
+    def adaptive_thresh(self, img):
+        img = cv.blur(img, (5, 5))
+        color_images = np.array(cv.split(img))
+        for idx, color_img in enumerate(color_images):
+            below_adapt = cv.adaptiveThreshold(color_img, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY_INV, 101, -10)
+            above_adapt = cv.adaptiveThreshold(color_img, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 101, 10)
+            color_images[idx] = np.logical_and(above_adapt, below_adapt)
+            color_images[idx] = cv.morphologyEx(color_images[idx], cv.MORPH_CLOSE, np.ones((7,7), dtype=np.uint8))
+            color_images[idx] = cv.erode(color_images[idx], np.ones((5,5), dtype=np.uint8), iterations=7)
+        logical_and = np.ones(img.shape[0:2], dtype=bool)
+        for place in range(0, 3):
+            logical_and = np.logical_and(logical_and, color_images[place])
+        for place in range(0, 3):
+            color_info = img[:, :, place]
+            color_info[logical_and] = 0
+
+        return img

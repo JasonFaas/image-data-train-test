@@ -25,17 +25,26 @@ image_sz = 768
 assert sample_image.shape[0] == image_sz
 image_mod = ImageModifications(image_sz, segments_df)
 
-larger_bucket = True
-if larger_bucket:
-    top_level_bucket_count = 16
+top_level_bucket_sz = 32
+if top_level_bucket_sz == 48:
     top_level_bucket_sz = 48
+    top_level_bucket_count = 16
     second_level_bucket_count = 12
     second_level_bucket_sz = 4
-else:
-    top_level_bucket_count = 24
+elif top_level_bucket_sz == 32:
     top_level_bucket_sz = 32
+    top_level_bucket_count = 24
     second_level_bucket_count = 8
     second_level_bucket_sz = 4
+elif top_level_bucket_sz == 16:
+    top_level_bucket_sz = 16
+    top_level_bucket_count = 48
+    second_level_bucket_count = 4
+    second_level_bucket_sz = 4
+else:
+    print("failure...")
+    exit(1)
+
 
 assert image_sz % top_level_bucket_count == 0
 assert int(image_sz / top_level_bucket_count) == top_level_bucket_sz
@@ -53,8 +62,8 @@ if train_files:
 filename_start = "1"
 
 
-top_level_output_filename = resources + "jason_top_level_" + output_traintest_name + "_" + str(top_level_bucket_sz) + "_" + filename_start + ".csv"
-second_level_output_filename = resources + "jason_second_level_" + output_traintest_name + "_" + str(top_level_bucket_sz) + "_" + str(second_level_bucket_sz) + "_" + filename_start + ".csv"
+top_level_output_filename = resources + output_traintest_name + "/jason_top_level_" + str(top_level_bucket_sz) + "_" + filename_start + ".csv"
+second_level_output_filename = resources + output_traintest_name + "/jason_second_level_" + str(top_level_bucket_sz) + "_" + str(second_level_bucket_sz) + "_" + filename_start + ".csv"
 
 
 folder_to_examine = train_images_filepath + train_image_sub_folder
@@ -70,22 +79,21 @@ for idx, filename_part in enumerate(hex_values):
 
     for filename in images_to_review:
         image_to_log = cv.imread(filename)
+        image_to_log = image_mod.blur_and_minimize(image_to_log)
         no_folder_filename = filename.replace(train_images_filepath + train_image_sub_folder, "")
         mask_to_log = image_mod.mask_from_filename(no_folder_filename)
         # TODO cleanup this REPETITIVE code
         for x_top_start in range(0, image_sz, top_level_bucket_sz):
-            prev_y_train = True
             for y_top_start in range(0, image_sz, top_level_bucket_sz):
                 y_train = np.count_nonzero(mask_to_log[x_top_start:x_top_start + top_level_bucket_sz, y_top_start:y_top_start + top_level_bucket_sz]) > top_level_bucket_sz
-                # skip adding info if previous and current and next are all false
-                if train_files and not prev_y_train and not y_train and y_top_start + top_level_bucket_sz != image_sz:
-                    next_y_train = np.count_nonzero(mask_to_log[x_top_start:x_top_start + top_level_bucket_sz, y_top_start + top_level_bucket_sz:y_top_start + top_level_bucket_sz*2]) > top_level_bucket_sz
-                    if not next_y_train:
-                        prev_y_train = True
-                        continue
                 blue_avg = np.average(image_to_log[x_top_start:x_top_start + top_level_bucket_sz, y_top_start:y_top_start + top_level_bucket_sz, 0])
                 green_avg = np.average(image_to_log[x_top_start:x_top_start + top_level_bucket_sz, y_top_start:y_top_start + top_level_bucket_sz, 1])
                 red_avg = np.average(image_to_log[x_top_start:x_top_start + top_level_bucket_sz, y_top_start:y_top_start + top_level_bucket_sz, 2])
+                # skip adding info if effectively a black image
+                average_min = 0.5
+                # TODO having black pixels be put into the summary is bad, fix it
+                if train_files and not y_train and blue_avg < average_min and green_avg < average_min and red_avg < average_min:
+                    continue
                 train_dict_top_level[no_folder_filename + "_" + str(x_top_start) + "_" + str(y_top_start)] = [y_train, blue_avg, green_avg, red_avg]
                 prev_y_train = y_train
                 if y_train:
