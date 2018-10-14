@@ -55,11 +55,11 @@ assert int(top_level_bucket_sz / second_level_bucket_count) == second_level_buck
 hex_values = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f']
 assert len(hex_values) == 16
 
-train_files = True
+train_files = False
 output_traintest_name = "test"
 if train_files:
     output_traintest_name = "train"
-filename_start = "1"
+filename_start = "32"
 
 
 top_level_output_filename = resources + output_traintest_name + "/jason_top_level_" + str(top_level_bucket_sz) + "_" + filename_start + ".csv"
@@ -106,7 +106,8 @@ def get_info_to_log(image_to_log, training_mask, thresh_mask):
 
     return y_train, values
 
-black_images_logged = 0
+black_images_logged_top = 0
+black_images_logged_second = 0
 columns_to_save = ['ship_in_image', 'blue_avg', 'green_avg', 'red_avg', 'blue_std', 'green_std', 'red_std']
 
 for idx, filename_part in enumerate(hex_values):
@@ -146,30 +147,37 @@ for idx, filename_part in enumerate(hex_values):
                         print("Put more logging in here")
                         continue
                 # skip adding info if effectively a black image
-                if train_files and log_values[0] == -1 and black_images_logged > 100:
+                if train_files and log_values[0] == -1 and black_images_logged_top > 100:
                     continue
                 elif log_values[0] == -1:
                     log_values = (0, 0, 0, 0, 0, 0)
-                    black_images_logged += 1
-                dict_position = no_folder_filename + "_" + str(x_top_start) + "_" + str(y_top_start)
-                train_dict_top_level[dict_position] = [y_train_top, log_values[0], log_values[1], log_values[2], log_values[3], log_values[4], log_values[5]]
+                    black_images_logged_top += 1
+                dict_position_top = no_folder_filename + "_" + str(x_top_start) + "_" + str(y_top_start)
+                train_dict_top_level[dict_position_top] = [y_train_top, log_values[0], log_values[1], log_values[2], log_values[3], log_values[4], log_values[5]]
 
                 # Second level
-                for x_second_start in range(x_top_start, x_top_stop, second_level_bucket_sz):
-                    for y_second_start in range(y_top_start, x_top_stop, second_level_bucket_sz):
-                        x_second_stop = x_second_start + second_level_bucket_sz
-                        y_second_stop = y_second_start + second_level_bucket_sz
-                        itl_slice = image_to_log[x_second_start:x_second_stop, y_second_start:y_second_stop]
-                        tm_slice = training_mask[x_second_start:x_second_stop, y_second_start:y_second_stop]
-                        thresh_slice = thresh_mask[x_second_start:x_second_stop, y_second_start:y_second_stop]
-                        y_train_second, log_values = get_info_to_log(itl_slice, tm_slice, thresh_slice)
+                if y_train_top:
+                    for x_second_start in range(x_top_start, x_top_stop, second_level_bucket_sz):
+                        for y_second_start in range(y_top_start, x_top_stop, second_level_bucket_sz):
+                            x_second_stop = x_second_start + second_level_bucket_sz
+                            y_second_stop = y_second_start + second_level_bucket_sz
+                            itl_slice = image_to_log[x_second_start:x_second_stop, y_second_start:y_second_stop]
+                            tm_slice = training_mask[x_second_start:x_second_stop, y_second_start:y_second_stop]
+                            thresh_slice = thresh_mask[x_second_start:x_second_stop, y_second_start:y_second_stop]
+                            y_train_second, log_values = get_info_to_log(itl_slice, tm_slice, thresh_slice)
 
-                        if y_train_top or y_train_second:
                             if type(log_values) == type(None):
                                 print("fix second level")
                                 continue
 
-                            train_dict_second_level[no_folder_filename + "_" + str(x_second_start) + "_" + str(y_second_start)] = [y_train_second, log_values[0], log_values[1], log_values[2], log_values[3], log_values[4], log_values[5]]
+                            if train_files and log_values[0] == -1 and black_images_logged_second > 100:
+                                continue
+                            elif log_values[0] == -1:
+                                log_values = (0, 0, 0, 0, 0, 0)
+                                black_images_logged_second += 1
+
+                            dict_position_second = no_folder_filename + "_" + str(x_second_start) + "_" + str(y_second_start)
+                            train_dict_second_level[dict_position_second] = [y_train_second, log_values[0], log_values[1], log_values[2], log_values[3], log_values[4], log_values[5]]
     train_df_top_level = pd.DataFrame.from_dict(train_dict_top_level, orient='index', columns=columns_to_save)
     train_df_top_level.reset_index(inplace=True)
     train_df_top_level.rename(index=str, columns={"index":"filename"}, inplace=True)
