@@ -51,19 +51,25 @@ class ImageModifications:
         return img
 
     def adaptive_thresh(self, img):
-        img = cv.blur(img, (5, 5))
-        color_images = np.array(cv.split(img))
-        for idx, color_img in enumerate(color_images):
-            below_adapt = cv.adaptiveThreshold(color_img, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY_INV, 101, -10)
-            above_adapt = cv.adaptiveThreshold(color_img, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 101, 10)
-            color_images[idx] = np.logical_and(above_adapt, below_adapt)
-            color_images[idx] = cv.morphologyEx(color_images[idx], cv.MORPH_CLOSE, np.ones((7,7), dtype=np.uint8))
-            color_images[idx] = cv.erode(color_images[idx], np.ones((5,5), dtype=np.uint8), iterations=7)
-        logical_and = np.ones(img.shape[0:2], dtype=bool)
-        for place in range(0, 3):
-            logical_and = np.logical_and(logical_and, color_images[place])
+        img, logical_and = self.adaptive_thresh_mask(img)
         for place in range(0, 3):
             color_info = img[:, :, place]
             color_info[logical_and] = 0
 
         return img
+
+    # TODO update this to remove some of the blur (but after 1st submission)
+    def adaptive_thresh_mask(self, img):
+        img = cv.blur(img, (5, 5))
+        img = cv.blur(img, (5, 5))
+        color_images = np.array(cv.split(img))
+        for idx, color_img in enumerate(color_images):
+            below_adapt = cv.adaptiveThreshold(color_img, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY_INV, 101,-10)
+            above_adapt = cv.adaptiveThreshold(color_img, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 101, 10)
+            color_images[idx] = np.logical_and(above_adapt, below_adapt)
+            color_images[idx] = cv.morphologyEx(color_images[idx], cv.MORPH_CLOSE, np.ones((5, 5), dtype=np.uint8))
+            color_images[idx] = cv.erode(color_images[idx], np.ones((3, 3), dtype=np.uint8), iterations=10)
+        logical_and = np.ones(img.shape[0:2], dtype=bool)
+        for place in range(0, 3):
+            logical_and = np.logical_and(logical_and, color_images[place])
+        return img, logical_and

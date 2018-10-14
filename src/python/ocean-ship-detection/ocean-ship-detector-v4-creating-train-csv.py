@@ -11,8 +11,8 @@ import glob
 
 
 train_images_filepath = '../../../../image-data-train-test-large-data/airbus-ocean-ship-detection-pictures/train_v2/'
-train_image_sub_folder = '1/'
-sample_file_name = '1a0a0f60d.jpg'
+train_image_sub_folder = '3/'
+sample_file_name = '3a0a50b3c.jpg'
 
 resources = '../../resources/ocean-ship-detection/'
 training_segmentations_filename = '%strain_ship_segmentations_v2.csv' % resources
@@ -68,6 +68,47 @@ second_level_output_filename = resources + output_traintest_name + "/jason_secon
 
 folder_to_examine = train_images_filepath + train_image_sub_folder
 train_dict_second_level = {}
+
+
+def get_info_to_log(image_to_log, training_mask, thresh_mask):
+    image_sz = image_to_log.shape[0]
+    pixels = (image_sz * image_sz)
+    y_train = np.count_nonzero(training_mask) > pixels * .1
+    # TODO make this more efficient
+    thresh_approval = pixels - np.count_nonzero(thresh_mask) > pixels * .1
+
+    # logging values
+    blue_avg = int(round(np.average(image_to_log[:,:,0])))
+    green_avg = int(round(np.average(image_to_log[:,:,1])))
+    red_avg = int(round(np.average(image_to_log[:,:,2])))
+    blue_std = int(round(np.std(image_to_log[:,:,0])))
+    green_std = int(round(np.std(image_to_log[:,:,1])))
+    red_std = int(round(np.std(image_to_log[:,:,2])))
+    values = (blue_avg, green_avg, red_avg, blue_std, green_std, red_std)
+
+    if y_train and not thresh_approval:
+        print("Blurring out valid image!\t" + str(image_sz))
+
+
+        cv.imshow("itl_slice", image_to_log)
+        cv.imshow("training_mask_slice", training_mask)
+        thresh_mask = thresh_mask.astype(dtype=np.uint8)
+        thresh_mask[:, :] *= 200
+        cv.imshow("thresh_mask_slice", thresh_mask)
+
+
+        if image_sz > 10 and cv.waitKey(10) & 0xFF == ord('q'):
+            cv.destroyAllWindows()
+            exit(0)
+        #values = None
+    elif not y_train and not thresh_approval:
+        values = (-1, -1, -1, -1, -1, -1)
+
+    return y_train, values
+
+black_images_logged = 0
+columns_to_save = ['ship_in_image', 'blue_avg', 'green_avg', 'red_avg', 'blue_std', 'green_std', 'red_std']
+
 for idx, filename_part in enumerate(hex_values):
     print("\tat " + filename_start + filename_part)
     train_dict_top_level = {}
@@ -78,33 +119,58 @@ for idx, filename_part in enumerate(hex_values):
         print("WARNING: NO FILES FOUND FOR " + regex_files)
 
     for filename in images_to_review:
-        image_to_log = cv.imread(filename)
-        image_to_log = image_mod.blur_and_minimize(image_to_log)
         no_folder_filename = filename.replace(train_images_filepath + train_image_sub_folder, "")
-        mask_to_log = image_mod.mask_from_filename(no_folder_filename)
-        # TODO cleanup this REPETITIVE code
+        image_to_log = cv.imread(filename)
+        image_to_log, thresh_mask = image_mod.adaptive_thresh_mask(image_to_log)
+        training_mask = image_mod.mask_from_filename(no_folder_filename)
         for x_top_start in range(0, image_sz, top_level_bucket_sz):
             for y_top_start in range(0, image_sz, top_level_bucket_sz):
-                y_train = np.count_nonzero(mask_to_log[x_top_start:x_top_start + top_level_bucket_sz, y_top_start:y_top_start + top_level_bucket_sz]) > top_level_bucket_sz
-                blue_avg = np.average(image_to_log[x_top_start:x_top_start + top_level_bucket_sz, y_top_start:y_top_start + top_level_bucket_sz, 0])
-                green_avg = np.average(image_to_log[x_top_start:x_top_start + top_level_bucket_sz, y_top_start:y_top_start + top_level_bucket_sz, 1])
-                red_avg = np.average(image_to_log[x_top_start:x_top_start + top_level_bucket_sz, y_top_start:y_top_start + top_level_bucket_sz, 2])
+                x_top_stop = x_top_start + top_level_bucket_sz
+                y_top_stop = y_top_start + top_level_bucket_sz
+                itl_slice = image_to_log[x_top_start:x_top_stop, y_top_start:y_top_stop]
+                tm_slice = training_mask[x_top_start:x_top_stop, y_top_start:y_top_stop]
+                thresh_slice = thresh_mask[x_top_start:x_top_stop, y_top_start:y_top_stop]
+                y_train_top, log_values = get_info_to_log(itl_slice, tm_slice, thresh_slice)
+                if type(log_values) == type(None):
+                    print(str(x_top_start) + " :: " + str(y_top_start))
+                    thresh_mask_dsp = thresh_mask.astype(dtype=np.uint8)
+                    thresh_mask_dsp[:,:] *= 200
+
+                    cv.imshow("image_to_log", image_to_log)
+                    cv.imshow("training_mask", training_mask)
+                    cv.imshow("thresh_mask", thresh_mask_dsp)
+                    if cv.waitKey(10) & 0xFF == ord('q'):
+                        cv.destroyAllWindows()
+                        exit(0)
+                    else:
+                        print("Put more logging in here")
+                        continue
                 # skip adding info if effectively a black image
-                average_min = 0.5
-                # TODO having black pixels be put into the summary is bad, fix it
-                if train_files and not y_train and blue_avg < average_min and green_avg < average_min and red_avg < average_min:
+                if train_files and log_values[0] == -1 and black_images_logged > 100:
                     continue
-                train_dict_top_level[no_folder_filename + "_" + str(x_top_start) + "_" + str(y_top_start)] = [y_train, blue_avg, green_avg, red_avg]
-                prev_y_train = y_train
-                if y_train:
-                    for x_second_start in range(x_top_start, x_top_start + top_level_bucket_sz, second_level_bucket_sz):
-                        for y_second_start in range(y_top_start, y_top_start + top_level_bucket_sz, second_level_bucket_sz):
-                            y_train = np.count_nonzero(mask_to_log[x_second_start:x_second_start + second_level_bucket_sz,y_second_start:y_second_start + second_level_bucket_sz]) > second_level_bucket_sz
-                            blue_avg = np.average(image_to_log[x_second_start:x_second_start + second_level_bucket_sz,y_second_start:y_second_start + second_level_bucket_sz, 0])
-                            green_avg = np.average(image_to_log[x_second_start:x_second_start + second_level_bucket_sz,y_second_start:y_second_start + second_level_bucket_sz, 1])
-                            red_avg = np.average(image_to_log[x_second_start:x_second_start + second_level_bucket_sz,y_second_start:y_second_start + second_level_bucket_sz, 2])
-                            train_dict_second_level[no_folder_filename + "_" + str(x_second_start) + "_" + str(y_second_start)] = [y_train, blue_avg, green_avg, red_avg]
-    train_df_top_level = pd.DataFrame.from_dict(train_dict_top_level, orient='index', columns=['ship_in_image', 'blue_avg', 'green_avg', 'red_avg'])
+                elif log_values[0] == -1:
+                    log_values = (0, 0, 0, 0, 0, 0)
+                    black_images_logged += 1
+                dict_position = no_folder_filename + "_" + str(x_top_start) + "_" + str(y_top_start)
+                train_dict_top_level[dict_position] = [y_train_top, log_values[0], log_values[1], log_values[2], log_values[3], log_values[4], log_values[5]]
+
+                # Second level
+                for x_second_start in range(x_top_start, x_top_stop, second_level_bucket_sz):
+                    for y_second_start in range(y_top_start, x_top_stop, second_level_bucket_sz):
+                        x_second_stop = x_second_start + second_level_bucket_sz
+                        y_second_stop = y_second_start + second_level_bucket_sz
+                        itl_slice = image_to_log[x_second_start:x_second_stop, y_second_start:y_second_stop]
+                        tm_slice = training_mask[x_second_start:x_second_stop, y_second_start:y_second_stop]
+                        thresh_slice = thresh_mask[x_second_start:x_second_stop, y_second_start:y_second_stop]
+                        y_train_second, log_values = get_info_to_log(itl_slice, tm_slice, thresh_slice)
+
+                        if y_train_top or y_train_second:
+                            if type(log_values) == type(None):
+                                print("fix second level")
+                                continue
+
+                            train_dict_second_level[no_folder_filename + "_" + str(x_second_start) + "_" + str(y_second_start)] = [y_train_second, log_values[0], log_values[1], log_values[2], log_values[3], log_values[4], log_values[5]]
+    train_df_top_level = pd.DataFrame.from_dict(train_dict_top_level, orient='index', columns=columns_to_save)
     train_df_top_level.reset_index(inplace=True)
     train_df_top_level.rename(index=str, columns={"index":"filename"}, inplace=True)
     if idx == 0:
@@ -112,7 +178,8 @@ for idx, filename_part in enumerate(hex_values):
     else:
         train_df_top_level.to_csv(top_level_output_filename, mode='a', index=False, header=False)
 
-train_df_second_level = pd.DataFrame.from_dict(train_dict_second_level, orient='index', columns=['ship_in_image', 'blue_avg', 'green_avg', 'red_avg'])
+
+train_df_second_level = pd.DataFrame.from_dict(train_dict_second_level, orient='index', columns=columns_to_save)
 train_df_second_level.reset_index(inplace=True)
 train_df_second_level.rename(index=str, columns={"index":"filename"}, inplace=True)
 train_df_second_level.to_csv(second_level_output_filename, index=False)

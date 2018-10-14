@@ -28,10 +28,10 @@ blocks = int(img_size / block_pixels)
 blocks_in_image = blocks * blocks
 
 sub_image_dtype = {'filename':str, 'ship_in_image': bool, 'blue_avg': np.double, 'green_avg': np.double, 'red_avg': np.double}
-train_set = pd.read_csv(resources + "train/" + 'jason_top_level_' + str(block_pixels) + '_0a.csv', dtype=sub_image_dtype)
-test_set = pd.read_csv(resources + "test/" + 'jason_top_level_' + str(block_pixels) + '_0c.csv', dtype=sub_image_dtype)
+train_set = pd.read_csv(resources + "train/" + 'jason_top_level_' + str(block_pixels) + '_0b.csv', dtype=sub_image_dtype)
+test_set = pd.read_csv(resources + "test/" + 'jason_top_level_' + str(block_pixels) + '_01.csv', dtype=sub_image_dtype)
 
-x_columns = ['blue_avg', 'green_avg', 'red_avg']
+x_columns = ['blue_avg', 'green_avg', 'red_avg', 'blue_std', 'green_std', 'red_std']
 y_column = ['ship_in_image']
 filename_column = ['filename']
 train_x_list = train_set[x_columns].values
@@ -40,15 +40,15 @@ total_test_file_list = test_set[filename_column].values
 total_test_x_list = test_set[x_columns].values
 total_test_y_list = test_set[y_column].values
 
-review_image = True
+review_image = False
 
-for neighbor_itr in range(14, 15, 1):
+for neighbor_itr in range(3, 4, 1):
     and_count = 0
     bad_guess_count = 0
     non_pred_count = 0
     print("neighbors:" + str(neighbor_itr))
-    knn = KNeighborsClassifier(n_neighbors=neighbor_itr)
-    knn.fit(train_x_list, train_y_list.ravel())
+    knn_top = KNeighborsClassifier(n_neighbors=neighbor_itr)
+    knn_top.fit(train_x_list, train_y_list.ravel())
     print("training model loaded")
     for test_start in range(0, len(total_test_y_list), blocks_in_image):
 
@@ -57,7 +57,26 @@ for neighbor_itr in range(14, 15, 1):
         test_x_list = total_test_x_list[test_start:test_start + blocks_in_image]
         test_y_list = total_test_y_list[test_start:test_start + blocks_in_image]
 
-        pred = knn.predict(test_x_list)
+        pred = knn_top.predict(test_x_list)
+
+        # expand guesses to neighbors in cardinal directions
+        assert pred.shape[0] == blocks * blocks
+        pred_update = pred.reshape(-1, blocks)
+        pred_update_read = pred_update.copy()
+        assert pred_update.shape[0] == blocks
+        for x_block in range(blocks):
+            for y_block in range(blocks):
+                if pred_update_read[x_block,y_block]:
+                    if x_block != 0:
+                        pred_update[x_block - 1, y_block] = True
+                    if x_block != blocks - 1:
+                        pred_update[x_block + 1, y_block] = True
+                    if y_block != 0:
+                        pred_update[x_block, y_block - 1] = True
+                    if y_block != blocks - 1:
+                        pred_update[x_block, y_block + 1] = True
+
+
         y_test_raveled = test_y_list.ravel()
         tf_result = y_test_raveled == pred
 
@@ -94,7 +113,7 @@ for neighbor_itr in range(14, 15, 1):
                         start_pt = (x_start, y_start)
                         stop_pt = (x_start + block_pixels, y_start + block_pixels)
                         cv.rectangle(actual_mask, start_pt, stop_pt, brightness, thickness=thickness_to_show)
-                        if review_image and thickness_to_show != 1:
+                        if review_image:
                             cv.rectangle(blur_and_minimize, start_pt, stop_pt, (brightness, brightness, brightness), thickness=thickness_to_show)
 
                 cv.imshow("actual_mask", actual_mask)
