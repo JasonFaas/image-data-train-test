@@ -5,7 +5,8 @@ import pandas as pd
 
 class GenerateValues:
 
-    def __init__(self, image_size, top_bucket_size, second_bucket_sz, training):
+    def __init__(self, image_size, top_bucket_size, second_bucket_sz, training, review_warnings):
+        self.review_warnings = review_warnings
         self.training = training
         self.black_images_logged_top = 0
         self.black_images_logged_second = 0
@@ -53,7 +54,7 @@ class GenerateValues:
         red_std = int(round(np.std(image_to_log[:, :, 2])))
         values = (blue_avg, green_avg, red_avg, blue_std, green_std, red_std)
 
-        if y_train and not thresh_approval:
+        if self.review_warnings and y_train and not thresh_approval:
             print("Blurring out valid image!\t" + str(image_sz))
 
             cv.imshow("itl_slice", image_to_log)
@@ -93,7 +94,7 @@ class GenerateValues:
                     cv.imshow("image_to_log", image_to_log)
                     cv.imshow("training_mask", training_mask)
                     cv.imshow("thresh_mask", thresh_mask_dsp)
-                    if cv.waitKey(10) & 0xFF == ord('q'):
+                    if self.review_warnings and cv.waitKey(10) & 0xFF == ord('q'):
                         cv.destroyAllWindows()
                         exit(0)
                     else:

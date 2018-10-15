@@ -28,13 +28,14 @@ image_mod = ImageModifications(image_sz, segments_df)
 top_level_bucket_sz = 32
 second_bucket_size = 4
 
-generate_values = GenerateValues(image_sz, top_level_bucket_sz, second_bucket_size, True)
+review_warnings = False
+generate_values = GenerateValues(image_sz, top_level_bucket_sz, second_bucket_size, True, review_warnings)
 
 
 hex_values = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f']
 assert len(hex_values) == 16
 
-filename_start = "30"
+filename_start = "3"
 
 
 top_level_output_filename = resources + "train/jason_top_level_" + str(top_level_bucket_sz) + "_" + filename_start + ".csv"

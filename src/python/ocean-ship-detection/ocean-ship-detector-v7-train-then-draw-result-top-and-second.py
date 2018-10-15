@@ -14,9 +14,9 @@ from generate_values import GenerateValues
 
 resources = '../../resources/ocean-ship-detection/'
 train_images_filepath = '../../../../image-data-train-test-large-data/airbus-ocean-ship-detection-pictures/train_v2/'
-train_image_sub_folder = '3/'
+train_image_sub_folder = '2/'
 image_path = train_images_filepath + train_image_sub_folder
-sample_file_name = '3a0a50b3c.jpg'
+sample_file_name = '2a0a756b8.jpg'
 test_image = cv.imread(train_images_filepath + train_image_sub_folder + sample_file_name)
 training_segmentations_filename = '%strain_ship_segmentations_v2.csv' % resources
 segments_df = pd.read_csv(training_segmentations_filename, nrows=100000)
@@ -44,9 +44,10 @@ second_train_y_list = second_train_set[y_column].values
 
 review_image = True
 
-filename_start = "3a0"
+filename_start = "2aba"
 
-generate_values = GenerateValues(img_size, block_pixels, 4, False)
+review_warnings = False
+generate_values = GenerateValues(img_size, block_pixels, 4, False, review_warnings)
 
 columns_to_save = ['ship_in_image', 'blue_avg', 'green_avg', 'red_avg', 'blue_std', 'green_std', 'red_std']
 
@@ -59,7 +60,13 @@ def update_counts(pred, y_test_raveled, and_count, bad_guess_count, non_pred_cou
     return and_count, bad_guess_count, non_pred_count
 
 
-def result_rectangles(img, predictions, y_test_raveled, pixels_sz, base_x_start, base_y_start, block_count):
+def result_rectangles(img,
+                      predictions,
+                      y_test_raveled,
+                      pixels_sz,
+                      base_x_start,
+                      base_y_start,
+                      block_count):
     for idx, guess in enumerate(predictions):
         actual = y_test_raveled[idx]
         x_start = (idx % block_count) * pixels_sz + base_x_start
@@ -82,6 +89,53 @@ def result_rectangles(img, predictions, y_test_raveled, pixels_sz, base_x_start,
                 cv.rectangle(img, start_pt, stop_pt, (brightness, brightness, brightness),
                              thickness=thickness_to_show)
 
+def result_mask(predictions,
+                pixels_sz,
+                base_x_start,
+                base_y_start,
+                block_count,
+                output_mask):
+    for idx, guess in enumerate(predictions):
+        if guess:
+            x_start = (idx % block_count) * pixels_sz + base_x_start
+            y_start = int(idx / block_count) * pixels_sz + base_y_start
+            brightness = 255
+            thickness_to_show = -1
+            start_pt = (x_start, y_start)
+            stop_pt = (x_start + pixels_sz - 1, y_start + pixels_sz - 1)
+            cv.rectangle(output_mask, start_pt, stop_pt, (brightness),thickness=thickness_to_show)
+
+
+def write_submission_file(output_mask, no_folder_filename, itr_idx):
+    # create data frame
+    swapped_mask = np.swapaxes(output_mask, 0, 1)
+    single_row_mask = swapped_mask.reshape(-1)
+    string_output = ''
+    current_length = 0
+    for srm_idx, val in enumerate(single_row_mask):
+        if current_length == 0 and val > 0:
+            if string_output == '':
+                string_output = str(srm_idx)
+            else:
+                string_output = string_output + " " + str(srm_idx)
+            current_length += 1
+        elif val > 0:
+            current_length += 1
+        elif current_length != 0 and val == 0:
+            string_output = string_output + " " + str(current_length)
+            current_length = 0
+    if current_length != 0:
+        string_output = string_output + " " + str(current_length)
+
+    result_df = pd.DataFrame(data=[[no_folder_filename, string_output]], columns=['ImageId','EncodedPixels'])
+
+    # write data to file
+    csv = 'jason_sample_submission.csv'
+    if itr_idx == 0:
+        result_df.to_csv(resources + csv, index=False)
+    else:
+        result_df.to_csv(resources + csv, mode='a', index=False, header=False)
+
 
 for neighbor_itr in range(3, 4, 1):
     top_and_count = 0
@@ -103,14 +157,16 @@ for neighbor_itr in range(3, 4, 1):
 
     print("images: " + str(len(images_to_review)))
     for itr_idx, filename in enumerate(images_to_review):
-        actual_mask = image_mod.mask_from_filename(filename)
-        actual_mask = actual_mask.copy()
         
         print("\timage: " + str(itr_idx))
         image_to_log = cv.imread(filename)
         image_to_log, thresh_mask = image_mod.adaptive_thresh_mask(image_to_log)
         no_folder_filename = filename.replace(train_images_filepath + train_image_sub_folder, "")
         training_mask = image_mod.mask_from_filename(no_folder_filename)
+
+        actual_mask = image_mod.mask_from_filename(no_folder_filename)
+        actual_mask = actual_mask.copy()
+        output_mask = np.zeros(actual_mask.shape, dtype=np.uint8)
 
         no_folder_filename = filename.replace(train_images_filepath + train_image_sub_folder, "")
         image_to_log = cv.imread(filename)
@@ -177,7 +233,21 @@ for neighbor_itr in range(3, 4, 1):
                                                                                                     second_and_count,
                                                                                                     second_bad_guess_count,
                                                                                                     second_non_pred_count)
-                    result_rectangles(img_draw_on, second_pred, second_y_test_raveled, 4, mid_x_start, mid_y_start, 8)
+                    if review_image:
+                        result_rectangles(
+                            img_draw_on,
+                            second_pred,
+                            second_y_test_raveled,
+                            4,
+                            mid_x_start,
+                            mid_y_start,
+                            8)
+                    result_mask(second_pred,
+                                4,
+                                mid_x_start,
+                                mid_y_start,
+                                8,
+                                output_mask)
 
                     # cv.imshow("second_level", blur_and_minimize[x_block*block_pixels:x_block*(block_pixels+1),y_block*block_pixels:y_block*(block_pixels+1)])
                     # if cv.waitKey(0) & 0xFF == ord('q'):
@@ -187,6 +257,8 @@ for neighbor_itr in range(3, 4, 1):
         
         
 
+
+        write_submission_file(output_mask, no_folder_filename, itr_idx)
 
         if np.count_nonzero(top_pred) > 0 or np.count_nonzero(top_y_test_raveled) > 0:
             # update counts
@@ -200,6 +272,7 @@ for neighbor_itr in range(3, 4, 1):
                 result_rectangles(img_draw_on, top_pred, top_y_test_raveled, block_pixels, 0, 0, blocks)
 
                 cv.imshow("actual_mask", actual_mask)
+                cv.imshow("output_mask", output_mask)
                 cv.imshow('quick', quick_img)
                 cv.imshow('quick_blur_and_minimize', img_draw_on)
                 if cv.waitKey(0) & 0xFF == ord('q'):
