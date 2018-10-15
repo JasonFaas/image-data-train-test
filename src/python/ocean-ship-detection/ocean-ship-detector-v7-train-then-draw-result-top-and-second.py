@@ -42,7 +42,7 @@ second_train_x_list = second_train_set[x_columns].values
 second_train_y_list = second_train_set[y_column].values
 
 
-review_image = False
+review_image = True
 
 filename_start = "3a0"
 
@@ -57,6 +57,30 @@ def update_counts(pred, y_test_raveled, and_count, bad_guess_count, non_pred_cou
     bad_guess_count += (np.count_nonzero(pred) - this_and_count)
     non_pred_count += (np.count_nonzero(y_test_raveled) - this_and_count)
     return and_count, bad_guess_count, non_pred_count
+
+
+def result_rectangles(img, predictions, y_test_raveled, pixels_sz, base_x_start, base_y_start, block_count):
+    for idx, guess in enumerate(predictions):
+        actual = y_test_raveled[idx]
+        x_start = (idx % block_count) * pixels_sz + base_x_start
+        y_start = int(idx / block_count) * pixels_sz + base_y_start
+        if guess or actual:
+            brightness = 0
+            thickness_to_show = 0
+            if guess and actual:
+                brightness = 255
+                thickness_to_show = 5
+            elif actual:
+                brightness = 170
+                thickness_to_show = 3
+            elif guess:
+                brightness = 100
+                thickness_to_show = 1
+            start_pt = (x_start, y_start)
+            stop_pt = (x_start + pixels_sz, y_start + pixels_sz)
+            if review_image:
+                cv.rectangle(img, start_pt, stop_pt, (brightness, brightness, brightness),
+                             thickness=thickness_to_show)
 
 
 for neighbor_itr in range(3, 4, 1):
@@ -125,7 +149,7 @@ for neighbor_itr in range(3, 4, 1):
 
         if review_image:
             quick_img = cv.imread(filename)
-            blur_and_minimize = image_mod.adaptive_thresh(quick_img)
+            img_draw_on = image_mod.adaptive_thresh(quick_img)
         
         if np.count_nonzero(top_pred) > 0:
             quick_img = cv.imread(filename)
@@ -134,11 +158,9 @@ for neighbor_itr in range(3, 4, 1):
 
             for idx, guess in enumerate(top_pred):
                 if guess:
-                    x_start = (idx % blocks) * block_pixels
-                    y_start = int(idx / blocks) * block_pixels
-                    # cv.imshow("second_level", blur_and_minimize)
-                    # cv.imshow("second_level_part", blur_and_minimize[y_start:y_start+block_pixels, x_start:x_start+block_pixels])
-                    dict_second_level = generate_values.parse_second_level_values(image_to_log, thresh_mask, training_mask, x_start, x_start+block_pixels, y_start, y_start+block_pixels)
+                    mid_x_start = (idx % blocks) * block_pixels
+                    mid_y_start = int(idx / blocks) * block_pixels
+                    dict_second_level = generate_values.parse_second_level_values(image_to_log, thresh_mask, training_mask, mid_y_start, mid_y_start+block_pixels, mid_x_start, mid_x_start+block_pixels)
 
                     train_df_second_level = pd.DataFrame.from_dict(dict_second_level, orient='index', columns=columns_to_save)
                     train_df_second_level.reset_index(inplace=True)
@@ -155,6 +177,7 @@ for neighbor_itr in range(3, 4, 1):
                                                                                                     second_and_count,
                                                                                                     second_bad_guess_count,
                                                                                                     second_non_pred_count)
+                    result_rectangles(img_draw_on, second_pred, second_y_test_raveled, 4, mid_x_start, mid_y_start, 8)
 
                     # cv.imshow("second_level", blur_and_minimize[x_block*block_pixels:x_block*(block_pixels+1),y_block*block_pixels:y_block*(block_pixels+1)])
                     # if cv.waitKey(0) & 0xFF == ord('q'):
@@ -174,30 +197,11 @@ for neighbor_itr in range(3, 4, 1):
                                                                                    top_non_pred_count)
 
             if review_image:
-                for idx, guess in enumerate(top_pred):
-                    actual = top_y_test_raveled[idx]
-                    x_start = (idx % blocks) * block_pixels
-                    y_start = int(idx / blocks) * block_pixels
-                    if guess or actual:
-                        brightness = 0
-                        thickness_to_show = 0
-                        if guess and actual:
-                            brightness = 255
-                            thickness_to_show = 5
-                        elif actual:
-                            brightness = 170
-                            thickness_to_show = 3
-                        elif guess:
-                            brightness = 100
-                            thickness_to_show = 1
-                        start_pt = (x_start, y_start)
-                        stop_pt = (x_start + block_pixels, y_start + block_pixels)
-                        if review_image:
-                            cv.rectangle(blur_and_minimize, start_pt, stop_pt, (brightness, brightness, brightness), thickness=thickness_to_show)
+                result_rectangles(img_draw_on, top_pred, top_y_test_raveled, block_pixels, 0, 0, blocks)
 
                 cv.imshow("actual_mask", actual_mask)
                 cv.imshow('quick', quick_img)
-                cv.imshow('quick_blur_and_minimize', blur_and_minimize)
+                cv.imshow('quick_blur_and_minimize', img_draw_on)
                 if cv.waitKey(0) & 0xFF == ord('q'):
                     break
     print('\ttop_and_count' + ":" + str(top_and_count))
