@@ -14,9 +14,11 @@ from generate_values import GenerateValues
 
 resources = '../../resources/ocean-ship-detection/'
 train_images_filepath = '../../../../image-data-train-test-large-data/airbus-ocean-ship-detection-pictures/train_v2/'
+# TODO revert after submission
 train_image_sub_folder = '2/'
+# train_image_sub_folder = '../test_v2/'
 image_path = train_images_filepath + train_image_sub_folder
-sample_file_name = '2a0a756b8.jpg'
+sample_file_name = '2a0a5eb69.jpg'
 test_image = cv.imread(train_images_filepath + train_image_sub_folder + sample_file_name)
 training_segmentations_filename = '%strain_ship_segmentations_v2.csv' % resources
 segments_df = pd.read_csv(training_segmentations_filename, nrows=100000)
@@ -30,7 +32,7 @@ blocks = int(img_size / block_pixels)
 blocks_in_image = blocks * blocks
 
 sub_image_dtype = {'filename':str, 'ship_in_image': bool, 'blue_avg': np.double, 'green_avg': np.double, 'red_avg': np.double}
-train_set = '3'
+train_set = '30'
 top_train_set = pd.read_csv(resources + "train/" + 'jason_top_level_' + str(block_pixels) + '_' + train_set + '.csv', dtype=sub_image_dtype)
 second_train_set = pd.read_csv(resources + "train/" + 'jason_second_level_' + str(block_pixels) + '_4_' + train_set + '.csv', dtype=sub_image_dtype)
 
@@ -42,9 +44,9 @@ second_train_x_list = second_train_set[x_columns].values
 second_train_y_list = second_train_set[y_column].values
 
 
-review_image = False
+review_image = True
 
-filename_start = "ccc"
+filename_start = "2a2e5aad"
 
 review_warnings = False
 generate_values = GenerateValues(img_size, block_pixels, 4, False, review_warnings)
@@ -105,7 +107,7 @@ def result_mask(predictions,
             stop_pt = (x_start + pixels_sz - 1, y_start + pixels_sz - 1)
             cv.rectangle(output_mask, start_pt, stop_pt, (brightness),thickness=thickness_to_show)
 
-
+#TODO fix off by one error here too
 def write_submission_file(output_mask, no_folder_filename, itr_idx):
     # create data frame
     swapped_mask = np.swapaxes(output_mask, 0, 1)
@@ -115,9 +117,9 @@ def write_submission_file(output_mask, no_folder_filename, itr_idx):
     for srm_idx, val in enumerate(single_row_mask):
         if current_length == 0 and val > 0:
             if string_output == '':
-                string_output = str(srm_idx)
+                string_output = str(srm_idx + 1)
             else:
-                string_output = string_output + " " + str(srm_idx)
+                string_output = string_output + " " + str(srm_idx + 1)
             current_length += 1
         elif val > 0:
             current_length += 1
@@ -130,14 +132,16 @@ def write_submission_file(output_mask, no_folder_filename, itr_idx):
     result_df = pd.DataFrame(data=[[no_folder_filename, string_output]], columns=['ImageId','EncodedPixels'])
 
     # write data to file
-    csv = 'jason_sample_submission.csv'
+    csv = 'jason_submission_updated_by_one.csv'
     if itr_idx == 0:
         result_df.to_csv(resources + csv, index=False)
     else:
         result_df.to_csv(resources + csv, mode='a', index=False, header=False)
 
 
-for neighbor_itr in range(1, 7, 1):
+for neighbor_itr in range(3, 4, 1):
+
+
     top_and_count = 0
     top_bad_guess_count = 0
     top_non_pred_count = 0
@@ -152,6 +156,7 @@ for neighbor_itr in range(1, 7, 1):
     knn_top = KNeighborsClassifier(n_neighbors=top_n_itr)
     knn_top.fit(top_train_x_list, top_train_y_list.ravel())
     print("top training model loaded")
+
     knn_second = KNeighborsClassifier(n_neighbors=second_n_itr)
     knn_second.fit(second_train_x_list, second_train_y_list.ravel())
     print("second training model loaded")
@@ -162,10 +167,11 @@ for neighbor_itr in range(1, 7, 1):
     print("images: " + str(len(images_to_review)))
     for itr_idx, filename in enumerate(images_to_review):
         
-        # print("\timage: " + str(itr_idx))
+        no_folder_filename = filename.replace(train_images_filepath + train_image_sub_folder, "")
+        print("\timage: " + str(itr_idx) + " " + no_folder_filename)
+
         image_to_log = cv.imread(filename)
         image_to_log, thresh_mask = image_mod.adaptive_thresh_mask(image_to_log)
-        no_folder_filename = filename.replace(train_images_filepath + train_image_sub_folder, "")
         training_mask = image_mod.mask_from_filename(no_folder_filename)
 
         actual_mask = image_mod.mask_from_filename(no_folder_filename)
@@ -233,7 +239,9 @@ for neighbor_itr in range(1, 7, 1):
                     second_y_test_raveled = second_test_y_list.ravel()
 
                     second_and_count, second_bad_guess_count, second_non_pred_count = update_counts(second_pred,
-                                                                                                   second_bad_guess_count,
+                                                                                                    second_y_test_raveled,
+                                                                                                    second_and_count,
+                                                                                                    second_bad_guess_count,
                                                                                                     second_non_pred_count)
                     if review_image:
                         result_rectangles(
