@@ -30,7 +30,7 @@ blocks = int(img_size / block_pixels)
 blocks_in_image = blocks * blocks
 
 sub_image_dtype = {'filename':str, 'ship_in_image': bool, 'blue_avg': np.double, 'green_avg': np.double, 'red_avg': np.double}
-train_set = '30'
+train_set = '3'
 top_train_set = pd.read_csv(resources + "train/" + 'jason_top_level_' + str(block_pixels) + '_' + train_set + '.csv', dtype=sub_image_dtype)
 second_train_set = pd.read_csv(resources + "train/" + 'jason_second_level_' + str(block_pixels) + '_4_' + train_set + '.csv', dtype=sub_image_dtype)
 
@@ -42,9 +42,9 @@ second_train_x_list = second_train_set[x_columns].values
 second_train_y_list = second_train_set[y_column].values
 
 
-review_image = True
+review_image = False
 
-filename_start = "2aba"
+filename_start = "ccc"
 
 review_warnings = False
 generate_values = GenerateValues(img_size, block_pixels, 4, False, review_warnings)
@@ -137,18 +137,22 @@ def write_submission_file(output_mask, no_folder_filename, itr_idx):
         result_df.to_csv(resources + csv, mode='a', index=False, header=False)
 
 
-for neighbor_itr in range(3, 4, 1):
+for neighbor_itr in range(1, 7, 1):
     top_and_count = 0
     top_bad_guess_count = 0
     top_non_pred_count = 0
     second_and_count = 0
     second_bad_guess_count = 0
     second_non_pred_count = 0
+
+    top_n_itr = 3
+    second_n_itr = neighbor_itr
+
     print("neighbors:" + str(neighbor_itr))
-    knn_top = KNeighborsClassifier(n_neighbors=neighbor_itr)
+    knn_top = KNeighborsClassifier(n_neighbors=top_n_itr)
     knn_top.fit(top_train_x_list, top_train_y_list.ravel())
     print("top training model loaded")
-    knn_second = KNeighborsClassifier(n_neighbors=neighbor_itr)
+    knn_second = KNeighborsClassifier(n_neighbors=second_n_itr)
     knn_second.fit(second_train_x_list, second_train_y_list.ravel())
     print("second training model loaded")
 
@@ -158,7 +162,7 @@ for neighbor_itr in range(3, 4, 1):
     print("images: " + str(len(images_to_review)))
     for itr_idx, filename in enumerate(images_to_review):
         
-        print("\timage: " + str(itr_idx))
+        # print("\timage: " + str(itr_idx))
         image_to_log = cv.imread(filename)
         image_to_log, thresh_mask = image_mod.adaptive_thresh_mask(image_to_log)
         no_folder_filename = filename.replace(train_images_filepath + train_image_sub_folder, "")
@@ -229,9 +233,7 @@ for neighbor_itr in range(3, 4, 1):
                     second_y_test_raveled = second_test_y_list.ravel()
 
                     second_and_count, second_bad_guess_count, second_non_pred_count = update_counts(second_pred,
-                                                                                                    second_y_test_raveled,
-                                                                                                    second_and_count,
-                                                                                                    second_bad_guess_count,
+                                                                                                   second_bad_guess_count,
                                                                                                     second_non_pred_count)
                     if review_image:
                         result_rectangles(
@@ -249,13 +251,6 @@ for neighbor_itr in range(3, 4, 1):
                                 8,
                                 output_mask)
 
-                    # cv.imshow("second_level", blur_and_minimize[x_block*block_pixels:x_block*(block_pixels+1),y_block*block_pixels:y_block*(block_pixels+1)])
-                    # if cv.waitKey(0) & 0xFF == ord('q'):
-                    #     cv.destroyAllWindows()
-                    #     exit(2)
-        
-        
-        
 
 
         write_submission_file(output_mask, no_folder_filename, itr_idx)
