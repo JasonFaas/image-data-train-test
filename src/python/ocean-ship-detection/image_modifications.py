@@ -23,7 +23,7 @@ class ImageModifications:
             if len(split) < 2:
                 continue
             for idx in range(0, len(split), 2):
-                start_point = int(split[idx])
+                start_point = int(split[idx]) - 1
                 pixels = int(split[idx + 1])
                 mask_1d[start_point:start_point+pixels] = 255
 

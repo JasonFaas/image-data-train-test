@@ -17,7 +17,7 @@ sample_file_name = '3a0a50b3c.jpg'
 resources = '../../resources/ocean-ship-detection/'
 training_segmentations_filename = '%strain_ship_segmentations_v2.csv' % resources
 
-segments_df = pd.read_csv(training_segmentations_filename, nrows=100000)
+segments_df = pd.read_csv(training_segmentations_filename)
 segments_df.fillna('-1', inplace=True)
 
 sample_image = cv.imread(train_images_filepath + train_image_sub_folder + sample_file_name)
