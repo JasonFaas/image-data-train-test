@@ -15,8 +15,8 @@ from image_test_space import DisplayImage
 resources = '../../../resources/digit-recognizer'
 # train_csv = 'train.csv'
 # train_csv = 'jason_train_10000.csv'
-# train_csv = 'jason_train_5000.csv'
-train_csv = 'jason_train_4000.csv'
+train_csv = 'jason_train_5000.csv'
+# train_csv = 'jason_train_4000.csv'
 # train_csv = 'jason_train_2000.csv'
 # train_csv = 'jason_train_1000.csv'
 csv_filename = '%s/%s' % (resources, train_csv)
@@ -60,7 +60,7 @@ for i in range(10,11):
 
 
 
-model_k_means = KMeans(n_clusters=15)
+model_k_means = KMeans(n_clusters=20)
 model_k_means.fit(samples_v2)
 pred_labels = model_k_means.predict(samples_v2)
 
