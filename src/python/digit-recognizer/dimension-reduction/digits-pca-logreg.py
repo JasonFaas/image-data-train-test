@@ -9,6 +9,11 @@ from sklearn.cluster import KMeans
 import matplotlib
 matplotlib.use("MacOSX")
 from matplotlib import pyplot as plt
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+
 
 from image_test_space import DisplayImage
 
@@ -33,18 +38,36 @@ target = target.astype('int')
 
 samples_v2 = list(map(lambda v: np.reshape(v, (-1)), samples_v1))
 
-from sklearn.preprocessing import StandardScaler
-samples_v2 = StandardScaler().fit_transform(samples_v2)
+x_train, x_test, y_train, y_test = train_test_split(samples_v2, target, test_size=0.2, random_state=10)
 
-from sklearn.decomposition import PCA
-model_pca = PCA(0.9)
-samples_v3 = model_pca.fit_transform(samples_v2)
+model_scaler = StandardScaler()
+x_train_v2 = model_scaler.fit_transform(x_train)
+x_test_v2 = model_scaler.transform(x_test)
 
-from sklearn.model_selection import train_test_split
-x_train, x_test, y_train, y_test = train_test_split(samples_v3, target, test_size=0.2, random_state=91)
+model_pca = PCA(0.90)
+x_train_v3 = model_pca.fit_transform(x_train_v2)
+x_test_v3 = model_pca.transform(x_test_v2)
 
-from sklearn.linear_model import LogisticRegression
-logreg = LogisticRegression(solver='lbfgs')
-logreg.fit(x_train, y_train)
-# preds = logreg.predict(x_test)
-print(logreg.score(x_test, y_test))
+
+review_failures = True
+
+# for c_param in [0.001,0.01,0.1,1,10,100]:
+for c_param in [10]:
+    for penalty_param in ['l2']:
+        logreg = LogisticRegression(penalty=penalty_param, C=c_param, solver='lbfgs')
+        logreg.fit(x_train_v3, y_train)
+        preds = logreg.predict(x_test_v3)
+        if review_failures:
+            guess_vs_actual = preds == y_test
+            for idx, good_guess in enumerate(guess_vs_actual):
+                if not good_guess:
+                    print("Guess " + str(preds[idx]) + " \tActual " + str(y_test[idx]))
+                    image = x_test[idx]
+                    image = np.reshape(image, (-1, 28, 1))
+                    image.astype(np.uint8)
+                    print(image.shape)
+                    cv.imshow("failure", image)
+                    if cv.waitKey(0) & 0xFF == ord('q'):
+                        break
+
+        print("Score for C of " + str(c_param) + " and penalty of " + penalty_param + " " + str(round(logreg.score(x_test_v3, y_test), 3)))

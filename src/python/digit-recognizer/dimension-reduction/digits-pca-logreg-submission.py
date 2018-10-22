@@ -9,6 +9,9 @@ from sklearn.cluster import KMeans
 import matplotlib
 matplotlib.use("MacOSX")
 from matplotlib import pyplot as plt
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.decomposition import PCA
 
 from image_test_space import DisplayImage
 
@@ -39,19 +42,19 @@ target = target.astype('int')
 
 samples_v2 = list(map(lambda v: np.reshape(v, (-1)), samples_v1))
 
-from sklearn.preprocessing import StandardScaler
-samples_v2 = StandardScaler().fit_transform(samples_v2)
 
-from sklearn.decomposition import PCA
+model_scaler = StandardScaler()
+samples_v2 = model_scaler.fit_transform(samples_v2)
+x_actual_test_scaled = model_scaler.transform(x_actual_test)
+
 model_pca = PCA(0.9)
 samples_v3 = model_pca.fit_transform(samples_v2)
-x_actual_test_tranform = model_pca.transform(x_actual_test)
+x_actual_test_pca_tranform = model_pca.transform(x_actual_test_scaled)
 
 
-from sklearn.linear_model import LogisticRegression
 logreg = LogisticRegression(solver='lbfgs')
 logreg.fit(samples_v3, target)
-preds = logreg.predict(x_actual_test_tranform)
+preds = logreg.predict(x_actual_test_pca_tranform)
 # print(logreg.score(x_test, y_test))
 
 
@@ -62,4 +65,5 @@ result_df = result_df.reset_index()
 output_columns = ['ImageId', 'Label']
 result_df.columns = output_columns
 
-result_df.to_csv('temp_submission.csv', index=False)
+version = '2'
+result_df.to_csv('submission-pca-logreg-v%s.csv' % version, index=False)
