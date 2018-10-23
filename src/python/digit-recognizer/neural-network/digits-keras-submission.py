@@ -48,21 +48,20 @@ y_train_v2 = to_categorical(target)
 from keras.optimizers import SGD
 from keras.callbacks import EarlyStopping
 
-# learning_rates = [.0001, 0.01, 1]
-# for lr in learning_rates:
 # Create the model: model
 model = Sequential()
 # Add the first hidden layer
-model.add(Dense(50, activation='relu', input_shape=(784,)))
+model.add(Dense(150, activation='relu', input_shape=(784,)))
 # Add the second hidden layer
-model.add(Dense(50, activation='relu'))
+model.add(Dense(150, activation='relu'))
+model.add(Dense(150, activation='relu'))
 # Add the output layer
 model.add(Dense(10, activation='softmax'))
 # Compile the model
-early_stopping_monitor = EarlyStopping(patience=3)
+early_stopping_monitor = EarlyStopping(patience=10, monitor='acc')
 model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 # Fit the model
-model.fit(samples_v2, y_train_v2, epochs=20, callbacks=[early_stopping_monitor])
+model.fit(samples_v2, y_train_v2, epochs=50, callbacks=[early_stopping_monitor], verbose=0)
 
 
 print("\n\nStarting the Real Stuff")
@@ -79,6 +78,6 @@ result_df = result_df.reset_index()
 output_columns = ['ImageId', 'Label']
 result_df.columns = output_columns
 
-version = '3'
+version = '4'
 result_df.to_csv('submission-keras-v%s.csv' % version, index=False)
 

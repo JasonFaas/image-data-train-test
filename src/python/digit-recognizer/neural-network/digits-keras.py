@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 from sklearn.model_selection import train_test_split
+from keras.callbacks import EarlyStopping
 
 from image_test_space import DisplayImage
 
@@ -31,7 +32,10 @@ target = target.astype('int')
 
 samples_v2 = list(map(lambda v: np.reshape(v, (-1)), samples_v1))
 
-x_train, x_test, y_train, y_test = train_test_split(samples_v2, target, test_size=0.2, random_state=10)
+x_train, x_test, y_train, y_test = train_test_split(samples_v2,
+                                                    target,
+                                                    test_size=0.2,
+                                                    random_state=10)
 
 model_scaler = StandardScaler()
 x_train_v2 = model_scaler.fit_transform(x_train)
@@ -40,31 +44,38 @@ x_test_v2 = model_scaler.transform(x_test)
 y_train_v2 = to_categorical(y_train)
 
 from keras.optimizers import SGD
-from keras.callbacks import EarlyStopping
+
 
 # learning_rates = [.0001, 0.01, 1]
 # for lr in learning_rates:
 # Create the model: model
-model = Sequential()
-# Add the first hidden layer
-model.add(Dense(50, activation='relu', input_shape=(784,)))
-# Add the second hidden layer
-model.add(Dense(50, activation='relu'))
-# Add the output layer
-model.add(Dense(10, activation='softmax'))
-# Compile the model
-early_stopping_monitor = EarlyStopping(patience=2)
-model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-# Fit the model
-model.fit(x_train_v2, y_train_v2, validation_split=0.2, epochs=20, callbacks=[early_stopping_monitor])
 
+layer_sizes = [100, 150, 200]#, .1]
+layers = [1, 2]
+dataframe = pd.DataFrame(data=np.zeros((len(layers), len(layer_sizes)), dtype=np.float), columns=layer_sizes, index=layers)
+print(dataframe)
 
-print("\n\nStarting the Real Stuff")
-predictions = model.predict(x_test_v2)
-print(list(map(lambda v: np.argmin(np.array(v)), predictions)))
-# array = np.array(predictions[12])
-# print(array)
-# print(array.argmax())
+for layer_size in layer_sizes:
+    for layer_count in layers:
+        model = Sequential()
+        model.add(Dense(layer_size, activation='relu', input_shape=(784,)))
+        for layer in range(0, layer_count):
+            model.add(Dense(layer_size, activation='relu'))
+        model.add(Dense(10, activation='softmax'))
 
-# print(model.summary())
+        early_stopping_monitor = EarlyStopping(patience=10, monitor='acc')
+        model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
+        model.fit(x_train_v2, y_train_v2, epochs=50, callbacks=[early_stopping_monitor], verbose=0)
+
+        predictions = model.predict(x_test_v2)
+        predictions = list(map(lambda v: np.argmax(np.array(v)), predictions))
+
+        total_test = y_test.shape[0]
+        nonzero = np.count_nonzero(np.array(predictions == y_test))
+        print("params:: layer_count: " + str(layer_count) + " " + "layer_size:" + str(layer_size))
+        score = round(nonzero / total_test, 3)
+        print("\tScore: " + str(score))
+        dataframe.at[layer_count, layer_size] = score
+
+print(dataframe)
