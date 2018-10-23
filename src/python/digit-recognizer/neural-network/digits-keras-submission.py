@@ -14,8 +14,8 @@ from image_test_space import DisplayImage
 resources = '../../../resources/digit-recognizer'
 test_csv = 'test.csv'
 # test_csv = 'jason_test_1000.csv'
-# train_csv = 'train.csv'
-train_csv = 'jason_train_10000.csv'
+train_csv = 'train.csv'
+# train_csv = 'jason_train_10000.csv'
 # train_csv = 'jason_train_5000.csv'
 # train_csv = 'jason_train_4000.csv'
 # train_csv = 'jason_train_2000.csv'
@@ -62,7 +62,7 @@ model.add(Dense(10, activation='softmax'))
 early_stopping_monitor = EarlyStopping(patience=3)
 model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 # Fit the model
-model.fit(samples_v2, y_train_v2, validation_split=0.5, epochs=20, callbacks=[early_stopping_monitor])
+model.fit(samples_v2, y_train_v2, epochs=20, callbacks=[early_stopping_monitor])
 
 
 print("\n\nStarting the Real Stuff")
@@ -79,6 +79,6 @@ result_df = result_df.reset_index()
 output_columns = ['ImageId', 'Label']
 result_df.columns = output_columns
 
-version = '2'
+version = '3'
 result_df.to_csv('submission-keras-v%s.csv' % version, index=False)
 
