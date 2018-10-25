@@ -35,7 +35,7 @@ image_mod = ImageModifications(image_sz, segments_df)
 image_filename_chars = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f']
 assert len(image_filename_chars) == 16
 
-filename_start = "3"
+filename_start = "33"
 
 
 
@@ -44,10 +44,10 @@ filename_start = "3"
 
 # TODO make bucket descriptions different
 top_level_bucket_sz = 8
-second_bucket_sz = 8
+second_bucket_sz = 0
 
 review_images = False
-generate_values = GenerateValues(image_sz, top_level_bucket_sz, second_bucket_sz, True, review_images)
+generate_values = GenerateValues(image_sz, top_level_bucket_sz, second_bucket_sz, True)
 
 
 folder_filename = train_images_filepath + train_image_sub_folder + sample_file_name
@@ -64,12 +64,13 @@ if review_images:
 
 
 
-training_output_filename = resources + "v2/train/jason_top_level_" + str(top_level_bucket_sz) + "_" + filename_start + ".csv"
+training_output_filename = resources + "v2/train/jason_center_only_" + str(top_level_bucket_sz) + "_"  + str(second_bucket_sz) + "_" + filename_start + ".csv"
 folder_to_examine = train_images_filepath + train_image_sub_folder
 
 
 
 columns_to_save = ['ship_in_image', 'blue_avg', 'green_avg', 'red_avg', 'blue_std', 'green_std', 'red_std']
+first_write = True
 
 for idx_1, filename_part in enumerate(image_filename_chars):
     print("\tat " + filename_start + filename_part)
@@ -87,7 +88,7 @@ for idx_1, filename_part in enumerate(image_filename_chars):
         image_to_log = cv.imread(filename)
         training_mask = image_mod.mask_from_filename(no_folder_filename)
         if np.count_nonzero(training_mask) == 0:
-            print("Skipping " + no_folder_filename)
+            # print("Skipping " + no_folder_filename)
             continue
         larger_mask = image_mod.increase_area_around_ship(training_mask)
 
@@ -102,8 +103,9 @@ for idx_1, filename_part in enumerate(image_filename_chars):
         train_df_top_level.reset_index(inplace=True)
         train_df_top_level.rename(index=str, columns={"index":"filename"}, inplace=True)
 
-        if idx_1 == 0 and idx_2 == 0:
+        if first_write:
             train_df_top_level.to_csv(training_output_filename, index=False)
+            first_write = False
         else:
             train_df_top_level.to_csv(training_output_filename, mode='a', index=False, header=False)
 

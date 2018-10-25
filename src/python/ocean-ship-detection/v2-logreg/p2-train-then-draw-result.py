@@ -18,7 +18,7 @@ test_images_filepath = '../../../../../image-data-train-test-large-data/airbus-o
 # Test images location
 test_image_sub_folder = '2/'
 # test_image_sub_folder = '../test_v2/'
-filename_start = "2bbb"
+filename_start = "211"
 sample_file_name = '2a0dc6a3a.jpg'
 
 # Segments for verification
@@ -32,24 +32,26 @@ img_size = test_image.shape[0]
 segments_df.fillna('-1', inplace=True)
 image_mod = ImageModifications(test_image.shape[0], segments_df)
 block_pixels = 8
+edge_block_pixels = 0
 blocks = int(img_size / block_pixels)
 blocks_in_image = blocks * blocks
 
 # Read training data compressed to CSV
-train_set = '3a'
-sub_image_dtype = {'filename':str, 'ship_in_image': bool, 'blue_avg': np.double, 'green_avg': np.double, 'red_avg': np.double}
-top_train_set = pd.read_csv(resources + "v2/train/" + 'jason_top_level_' + str(block_pixels) + '_' + train_set + '.csv', dtype=sub_image_dtype)
+train_set = '33'
+sub_image_dtype = {'filename':str, 'ship_in_image': bool}
+top_train_set = pd.read_csv(resources + "v2/train/" + 'jason_center_only_' + str(block_pixels) + '_' + str(edge_block_pixels) + '_' + train_set + '.csv', dtype=sub_image_dtype)
 
-x_columns = ['blue_avg', 'green_avg', 'red_avg', 'blue_std', 'green_std', 'red_std']
-y_column = ['ship_in_image']
+columns_to_read = ['ship_in_image', 'blue_avg', 'green_avg', 'red_avg', 'blue_std', 'green_std', 'red_std']
+
+x_columns = columns_to_read[1:]
+y_column = columns_to_read[0:1]
 top_train_x_list = top_train_set[x_columns].values
 top_train_y_list = top_train_set[y_column].values
 
 review_image = True
 
-generate_values = GenerateValues(img_size, block_pixels, 4, False)
+generate_values = GenerateValues(img_size, block_pixels, edge_block_pixels, False)
 
-columns_to_save = ['ship_in_image', 'blue_avg', 'green_avg', 'red_avg', 'blue_std', 'green_std', 'red_std']
 
 
 def update_counts(pred, y_test_raveled, and_count, bad_guess_count, non_pred_count):
@@ -126,7 +128,7 @@ for itr_idx, filename in enumerate(images_to_review):
     values_dict = generate_values.parsing_values(image_to_log, training_mask, larger_mask, training=False)
 
 
-    train_df_top_level = pd.DataFrame.from_dict(values_dict, orient='index', columns=columns_to_save)
+    train_df_top_level = pd.DataFrame.from_dict(values_dict, orient='index', columns=columns_to_read)
     train_df_top_level.reset_index(inplace=True)
     train_df_top_level.rename(index=str, columns={"index": "filename"}, inplace=True)
 

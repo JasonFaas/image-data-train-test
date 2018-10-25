@@ -12,17 +12,9 @@ class GenerateValues:
         self.pixels = image_size ** 2
         self.image_sz = image_size
         self.top_bucket_sz = top_bucket_size
-        if top_bucket_size == 8:
-            self.top_bucket_count = 96
-            self.second_bucket_count = 1
-            self.second_bucket_sz = second_bucket_sz
-        else:
-            print("failure...")
-            exit(1)
+        self.second_bucket_sz = second_bucket_sz
 
-        assert self.image_sz % self.top_bucket_count == 0
-        assert int(self.image_sz / self.top_bucket_count) == self.top_bucket_sz
-
+        assert self.image_sz % self.top_bucket_sz == 0
         assert self.image_sz % (self.top_bucket_sz * self.second_bucket_sz) == 0
 
 
@@ -39,7 +31,7 @@ class GenerateValues:
         blue_std = int(round(np.std(image_to_log[:, :, 0])))
         green_std = int(round(np.std(image_to_log[:, :, 1])))
         red_std = int(round(np.std(image_to_log[:, :, 2])))
-        values = (blue_avg, green_avg, red_avg, blue_std, green_std, red_std)
+        values = (y_train, blue_avg, green_avg, red_avg, blue_std, green_std, red_std)
 
         return y_train, values
 
@@ -62,6 +54,6 @@ class GenerateValues:
                 y_train_top, log_values = self.get_info_to_log(itl_slice, ship_slice, examine_slice)
 
                 dict_position_top = str(x_top_start) + "_" + str(y_top_start)
-                values_dict[dict_position_top] = [y_train_top, log_values[0], log_values[1], log_values[2], log_values[3], log_values[4], log_values[5]]
+                values_dict[dict_position_top] = log_values
 
         return values_dict
