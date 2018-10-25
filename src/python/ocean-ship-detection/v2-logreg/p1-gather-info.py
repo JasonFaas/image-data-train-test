@@ -35,7 +35,7 @@ image_mod = ImageModifications(image_sz, segments_df)
 image_filename_chars = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f']
 assert len(image_filename_chars) == 16
 
-filename_start = "3a"
+filename_start = "3"
 
 
 
@@ -76,7 +76,7 @@ for idx_1, filename_part in enumerate(image_filename_chars):
     # go through test data and mark progress
     regex_files = train_images_filepath + train_image_sub_folder + filename_start + filename_part + "*.jpg"
     images_to_review = glob.glob(regex_files)
-    if len(images_to_review) != 0:
+    if len(images_to_review) == 0:
         print("WARNING: NO FILES FOUND FOR " + regex_files)
 
 
@@ -92,7 +92,10 @@ for idx_1, filename_part in enumerate(image_filename_chars):
         larger_mask = image_mod.increase_area_around_ship(training_mask)
 
 
-        values_dict = generate_values.parsing_values(image_to_log, training_mask, larger_mask)
+        values_dict = generate_values.parsing_values(image_to_log,
+                                                     training_mask,
+                                                     larger_mask,
+                                                     training=True)
 
         # log info
         train_df_top_level = pd.DataFrame.from_dict(values_dict, orient='index', columns=columns_to_save)

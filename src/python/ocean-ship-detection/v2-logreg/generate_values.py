@@ -5,8 +5,7 @@ import pandas as pd
 
 class GenerateValues:
 
-    def __init__(self, image_size, top_bucket_size, second_bucket_sz, training, review_warnings):
-        self.review_warnings = review_warnings
+    def __init__(self, image_size, top_bucket_size, second_bucket_sz, training):
         self.training = training
         self.black_images_logged_top = 0
         self.black_images_logged_second = 0
@@ -45,7 +44,7 @@ class GenerateValues:
         return y_train, values
 
 
-    def parsing_values(self, image_to_log, ship_mask, examine_mask):
+    def parsing_values(self, image_to_log, ship_mask, examine_mask, training):
         values_dict = {}
 
         # examine top_bucket_sz chunks
@@ -57,7 +56,7 @@ class GenerateValues:
                 ship_slice = ship_mask[x_top_start:x_top_stop, y_top_start:y_top_stop]
                 examine_slice = examine_mask[x_top_start:x_top_stop, y_top_start:y_top_stop]
 
-                if np.count_nonzero(examine_slice) == 0:
+                if training and np.count_nonzero(examine_slice) == 0:
                     continue
 
                 y_train_top, log_values = self.get_info_to_log(itl_slice, ship_slice, examine_slice)
@@ -66,30 +65,3 @@ class GenerateValues:
                 values_dict[dict_position_top] = [y_train_top, log_values[0], log_values[1], log_values[2], log_values[3], log_values[4], log_values[5]]
 
         return values_dict
-
-    def parse_second_level_values(self, image_to_log, thresh_mask, training_mask, x_top_start, x_top_stop, y_top_start, y_top_stop):
-        train_dict_second_level = {}
-        for x_second_start in range(x_top_start, x_top_stop, self.second_bucket_sz):
-            for y_second_start in range(y_top_start, y_top_stop, self.second_bucket_sz):
-                x_second_stop = x_second_start + self.second_bucket_sz
-                y_second_stop = y_second_start + self.second_bucket_sz
-                itl_slice = image_to_log[x_second_start:x_second_stop, y_second_start:y_second_stop]
-                tm_slice = training_mask[x_second_start:x_second_stop, y_second_start:y_second_stop]
-                thresh_slice = thresh_mask[x_second_start:x_second_stop, y_second_start:y_second_stop]
-                y_train_second, log_values = self.get_info_to_log(itl_slice, tm_slice, thresh_slice)
-
-                if type(log_values) == type(None):
-                    print("fix second level")
-                    continue
-
-                if self.training and log_values[0] == -1 and self.black_images_logged_second > 100:
-                    continue
-                elif log_values[0] == -1:
-                    log_values = (0, 0, 0, 0, 0, 0)
-                    self.black_images_logged_second += 1
-
-                dict_position_second = str(x_second_start) + "_" + str(y_second_start)
-                train_dict_second_level[dict_position_second] = [y_train_second, log_values[0], log_values[1],
-                                                                 log_values[2], log_values[3], log_values[4],
-                                                                 log_values[5]]
-        return train_dict_second_level

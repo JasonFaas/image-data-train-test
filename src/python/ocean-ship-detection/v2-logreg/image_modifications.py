@@ -35,3 +35,51 @@ class ImageModifications:
 
     def increase_area_around_ship(self, ship_mask):
         return cv.dilate(ship_mask, np.ones((9, 9), dtype=np.uint8), iterations=9)
+
+    # Add rectangles to image for reviewing
+    def result_rectangles(self,
+                          img,
+                          predictions,
+                          y_test_raveled,
+                          pixels_sz,
+                          base_x_start,
+                          base_y_start,
+                          block_count):
+        for idx, guess in enumerate(predictions):
+            actual = y_test_raveled[idx]
+            x_start = (idx % block_count) * pixels_sz + base_x_start
+            y_start = int(idx / block_count) * pixels_sz + base_y_start
+            if guess or actual:
+                brightness = 100
+                thickness_to_show = 1
+                if guess and actual:
+                    brightness = 255
+                    thickness_to_show = 5
+                elif guess:
+                    brightness = 170
+                    thickness_to_show = 3
+                start_pt = (x_start, y_start)
+                stop_pt = (x_start + pixels_sz, y_start + pixels_sz)
+                cv.rectangle(img,
+                             start_pt,
+                             stop_pt,
+                             (brightness, brightness, brightness),
+                             thickness=thickness_to_show)
+
+
+    def result_mask(self,
+                    predictions,
+                    pixels_sz,
+                    base_x_start,
+                    base_y_start,
+                    block_count,
+                    output_mask):
+        for idx, guess in enumerate(predictions):
+            if guess:
+                x_start = (idx % block_count) * pixels_sz + base_x_start
+                y_start = int(idx / block_count) * pixels_sz + base_y_start
+                brightness = 255
+                thickness_to_show = -1
+                start_pt = (x_start, y_start)
+                stop_pt = (x_start + pixels_sz - 1, y_start + pixels_sz - 1)
+                cv.rectangle(output_mask, start_pt, stop_pt, (brightness),thickness=thickness_to_show)
