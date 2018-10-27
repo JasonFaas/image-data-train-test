@@ -46,7 +46,7 @@ target = target.astype(int)
 samples_v2 = np.array(list(map(lambda v: np.reshape(v, (28, 28, 1)), samples_v1)))
 samples_v2 = samples_v2.astype(np.uint8)
 
-target_value = 8
+target_value = 0
 samples_v2 = samples_v2[target == target_value]
 target = target[target == target_value]
 
@@ -54,8 +54,8 @@ target = target[target == target_value]
 print(samples_v2.shape[0])
 
 
-for blocksize in [7]:
-    for C in [-3]:
+for blocksize in [9]:
+    for C in [-2]:
         few_contours = 0
         dict_areas = {}
         dict_areas[0] = 0
@@ -64,6 +64,8 @@ for blocksize in [7]:
         dict_areas[3] = 0
         dict_areas[4] = 0
         dict_areas[5] = 0
+        dict_areas[6] = 0
+        dict_areas[7] = 0
         for img in samples_v2:
             # ff_copy = img.copy()
             ff_mean = cv.adaptiveThreshold(img, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, blocksize, C)
@@ -96,11 +98,11 @@ for blocksize in [7]:
             cv.imshow("ff_mean", ff_mean)
             cv.imshow("original_img", img)
             cv.imshow("result", result)
-            if cv.waitKey(0) & 0xFF == ord('q'):
+            if len(cnts) > 1 and cv.waitKey(0) & 0xFF == ord('q'):
                 break
 
 
-        if dict_areas[2] > samples_v2.shape[0] / 2:
+        if dict_areas[1] > samples_v2.shape[0] / 2:
             print("\nC and blocksize:" + str(C) + " " + str(blocksize))
             print("Few Contours:" + str(few_contours))
             print(dict_areas)
