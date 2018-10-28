@@ -17,9 +17,9 @@ from sklearn.linear_model import LogisticRegression
 
 
 resources = '../../../resources/digit-recognizer'
-train_csv = 'train.csv'
+# train_csv = 'train.csv'
 # train_csv = 'jason_train_10000.csv'
-# train_csv = 'jason_train_5000.csv'
+train_csv = 'jason_train_5000.csv'
 # train_csv = 'jason_train_4000.csv'
 # train_csv = 'jason_train_2000.csv'
 # train_csv = 'jason_train_1000.csv'
@@ -42,8 +42,7 @@ target = target.astype(int)
 samples_v2 = list(map(lambda v: np.reshape(v, (-1)), samples_v1))
 samples_v3 = []
 
-
-def circle_count(img):
+def circle_count_and_locations(img):
     ff_mean = cv.adaptiveThreshold(img, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 9, -2)
     cv.floodFill(ff_mean, np.zeros((img.shape[0] + 2, img.shape[1] + 2), np.uint8), (0, 0), 255)
 
@@ -52,29 +51,44 @@ def circle_count(img):
     cnts = cv.findContours(ff_mean_inv, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
     cnts = cnts[1]
 
-    result = np.zeros((28, 28, 1), np.uint8)
+    top_point = np.zeros((2), np.uint8)
+    bottom_point = np.zeros((2), np.uint8)
 
-    # for c in cnts:
-    #     M = cv.moments(c)
-    #     if M["m00"] > .1:
-    #         cX = int(M["m10"] / M["m00"])
-    #         cY = int(M["m01"] / M["m00"])
-    #     else:
-    #         halfway_c = int(c.shape[0] - 1 / 2)
-    #         cX = c[halfway_c, 0, 0]
-    #         cY = c[halfway_c, 0, 1]
-    #
-    #     result[cY, cX] = 255
+    for c in cnts:
+        M = cv.moments(c)
+        if M["m00"] > .1:
+            cX = int(M["m10"] / M["m00"])
+            cY = int(M["m01"] / M["m00"])
+        else:
+            halfway_c = int(c.shape[0] - 1 / 2)
+            cX = c[halfway_c, 0, 0]
+            cY = c[halfway_c, 0, 1]
 
-    return len(cnts)
+        if bottom_point[1] == 0 or cY < bottom_point[1]:
+            if top_point[1] == 0:
+                top_point[0] == bottom_point[0]
+                top_point[1] == bottom_point[1]
+
+            bottom_point[0] = cX
+            bottom_point[1] = cY
+        elif top_point[1] == 0 or cY > top_point[1]:
+            top_point[0] == cX
+            top_point[1] == cY
+
+
+
+    return [len(cnts), bottom_point[0], bottom_point[1], top_point[0], top_point[1]]
 
 
 for idx, sample in enumerate(samples_v2):
-    new_sample = np.zeros((sample.shape[0] + 1), np.uint8)
+    circle_info_size = 5
+    new_sample = np.zeros((sample.shape[0] + circle_info_size), np.uint8)
     new_sample[0:sample.shape[0]] = sample[:]
 
     # include circle count
-    new_sample[-1] = circle_count(samples_v1[idx])
+    circle_info = circle_count_and_locations(samples_v1[idx])
+    for i in range(circle_info_size):
+        new_sample[-1 - i] = circle_info[i]
     samples_v3.append(new_sample)
 
 
@@ -90,7 +104,6 @@ scaler = StandardScaler()
 x_train = scaler.fit_transform(x_train)
 x_test = scaler.transform(x_test)
 
-# TODO try out other c_param after setting up points of circles
 for c_param in [0.1]:
     for penalty in ['l2']:
         clf = LogisticRegression(penalty=penalty, C=c_param)
