@@ -40,61 +40,12 @@ target = target.astype(int)
 # exit(0)
 
 samples_v2 = list(map(lambda v: np.reshape(v, (-1)), samples_v1))
-samples_v3 = []
-
-def circle_count_and_locations(img):
-    ff_mean = cv.adaptiveThreshold(img, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 9, -2)
-    cv.floodFill(ff_mean, np.zeros((img.shape[0] + 2, img.shape[1] + 2), np.uint8), (0, 0), 255)
-
-    ff_mean_inv = cv.bitwise_not(ff_mean)
-
-    cnts = cv.findContours(ff_mean_inv, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-    cnts = cnts[1]
-
-    top_point = np.zeros((2), np.uint8)
-    bottom_point = np.zeros((2), np.uint8)
-
-    for c in cnts:
-        M = cv.moments(c)
-        if M["m00"] > .1:
-            cX = int(M["m10"] / M["m00"])
-            cY = int(M["m01"] / M["m00"])
-        else:
-            halfway_c = int(c.shape[0] - 1 / 2)
-            cX = c[halfway_c, 0, 0]
-            cY = c[halfway_c, 0, 1]
-
-        if bottom_point[1] == 0 or cY < bottom_point[1]:
-            if top_point[1] == 0:
-                top_point[0] == bottom_point[0]
-                top_point[1] == bottom_point[1]
-
-            bottom_point[0] = cX
-            bottom_point[1] = cY
-        elif top_point[1] == 0 or cY > top_point[1]:
-            top_point[0] == cX
-            top_point[1] == cY
-
-
-
-    return [len(cnts), bottom_point[0], bottom_point[1], top_point[0], top_point[1]]
-
-
-for idx, sample in enumerate(samples_v2):
-    circle_info_size = 5
-    new_sample = np.zeros((sample.shape[0] + circle_info_size), np.uint8)
-    new_sample[0:sample.shape[0]] = sample[:]
-
-    # include circle count
-    circle_info = circle_count_and_locations(samples_v1[idx])
-    for i in range(circle_info_size):
-        new_sample[-1 - i] = circle_info[i]
-    samples_v3.append(new_sample)
+samples_v3 = image_info.circle_info_arr(samples_v2, samples_v1)
 
 
 
 
-x_train, x_test, y_train, y_test = train_test_split(samples_v3,
+x_train, x_test_before, y_train, y_test = train_test_split(samples_v3,
                                                     target,
                                                     test_size=0.2,
                                                     random_state=10)
@@ -102,14 +53,38 @@ x_train, x_test, y_train, y_test = train_test_split(samples_v3,
 from sklearn.preprocessing import StandardScaler
 scaler = StandardScaler()
 x_train = scaler.fit_transform(x_train)
-x_test = scaler.transform(x_test)
+x_test = scaler.transform(x_test_before)
 
-for c_param in [0.1]:
-    for penalty in ['l2']:
+from sklearn.decomposition import PCA
+model_pca = PCA(0.80)
+x_train = model_pca.fit_transform(x_train)
+x_test = model_pca.transform(x_test)
+
+review_failures = True
+
+for c_param in [1]:
+    for penalty in ['l1']:
+        print("Starting LogReg")
         clf = LogisticRegression(penalty=penalty, C=c_param)
         clf.fit(x_train, y_train)
+        preds = clf.predict(x_test)
 
         print("\nC " + str(c_param))
         print("P " + str(penalty))
         print(round(clf.score(x_test, y_test), 3))
+
+        if review_failures:
+            guess_vs_actual = preds == y_test
+            for idx, good_guess in enumerate(guess_vs_actual):
+                if not good_guess:
+                    print("Guess " + str(preds[idx]) + " \tActual " + str(y_test[idx]))
+                    image = x_test_before[idx]
+                    print(image[28*28:])
+                    image = np.reshape(image[0:28*28], (-1, 28, 1))
+                    image.astype(np.uint8)
+                    print(image.shape)
+                    cv.imshow("failure", image)
+                    if cv.waitKey(0) & 0xFF == ord('q'):
+                        break
+
 
