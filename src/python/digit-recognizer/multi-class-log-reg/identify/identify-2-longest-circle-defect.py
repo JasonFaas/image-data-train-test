@@ -46,9 +46,14 @@ target = target.astype(int)
 samples_v2 = np.array(list(map(lambda v: np.reshape(v, (28, 28, 1)), samples_v1)))
 samples_v2 = samples_v2.astype(np.uint8)
 
-target_value = 0
+target_value = 6
 samples_v2 = samples_v2[target == target_value]
 target = target[target == target_value]
+
+
+def two_points_distance(pt_a, pt_b):
+    return ((pt_a[0] - pt_b[0]) ** 2 + (pt_a[1] - pt_b[1]) ** 2) ** 0.5
+
 
 for img in samples_v2:
 
@@ -81,9 +86,9 @@ for img in samples_v2:
             print(cnt[f][0])
             print(d)
 
-            a = np.sum((s - f) ** 2) ** 0.5
-            b = np.sum((e - f) ** 2) ** 0.5
-            c = np.sum((s - e) ** 2) ** 0.5
+            a = two_points_distance(start, far)
+            b = two_points_distance(end, far)
+            c = two_points_distance(start, end)
             distance = a * b / c
             print(distance)
             print("")

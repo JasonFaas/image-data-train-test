@@ -109,6 +109,8 @@ class DisplayImage:
 
         top_point = np.zeros((2), np.uint8)
         bottom_point = np.zeros((2), np.uint8)
+        bottom_point[0] = 28
+        bottom_point[1] = 28
 
         for c in cnts:
             M = cv.moments(c)
@@ -120,16 +122,13 @@ class DisplayImage:
                 cX = c[halfway_c, 0, 0]
                 cY = c[halfway_c, 0, 1]
 
-            if bottom_point[1] == 0 or cY < bottom_point[1]:
-                if top_point[1] == 0:
-                    top_point[0] == bottom_point[0]
-                    top_point[1] == bottom_point[1]
-
+            # 2 distinct points to better separate 6 and 9, some crossover intended
+            if cY < bottom_point[1] and cY <= 15:
                 bottom_point[0] = cX
                 bottom_point[1] = cY
-            elif top_point[1] == 0 or cY > top_point[1]:
-                top_point[0] == cX
-                top_point[1] == cY
+            elif cY > top_point[1] and cY >= 14:
+                top_point[0] = cX
+                top_point[1] = cY
 
 
 
@@ -140,13 +139,69 @@ class DisplayImage:
         samples_after = []
 
         for idx, sample in enumerate(samples_1d):
+            # put old info into new array with size for new info
             circle_info_size = 5
-            new_sample = np.zeros((sample.shape[0] + circle_info_size), np.uint8)
+            convex_info_size = 5
+            additional_info_size = circle_info_size + convex_info_size
+            new_sample = np.zeros((sample.shape[0] + additional_info_size), np.uint8)
             new_sample[0:sample.shape[0]] = sample[:]
 
-            # include circle count
+            # include circle count info
             circle_info = self.circle_count_and_locations(samples_2d[idx])
             for i in range(circle_info_size):
                 new_sample[-1 - i] = circle_info[i]
+
+            # include convex info
+            convex_info = self.convex_distance_and_locations(samples_2d[idx])
+            for i in range(convex_info_size):
+                new_sample[-1 - circle_info_size - i] = convex_info[i]
+
             samples_after.append(new_sample)
         return samples_after
+
+    def convex_distance_and_locations(self, img):
+        _, thresh = cv.threshold(img, 10, 255, cv.THRESH_BINARY)
+
+        im2, contours, hierarchy = cv.findContours(img, 2, 1)
+        cnt = contours[0]
+
+        hull = cv.convexHull(cnt, returnPoints=False)
+        defects = cv.convexityDefects(cnt, hull)
+
+        if not (defects is None):
+            furthest_idx = 0
+            furthest_dist = 0
+            defect_count = defects.shape[0]
+            for idx in range(defect_count):
+                # for idx in range(1):
+                s, e, f, d = defects[idx, 0]
+                start = tuple(cnt[s][0])
+                end = tuple(cnt[e][0])
+                far = tuple(cnt[f][0])
+
+                a = self.two_points_distance(start, far)
+                b = self.two_points_distance(end, far)
+                c = self.two_points_distance(start, end)
+                distance = a * b / c
+
+                if distance > furthest_dist:
+                    furthest_dist = distance
+                    furthest_idx = idx
+
+            s, e, f, d = defects[furthest_idx, 0]
+            start = tuple(cnt[s][0])
+            end = tuple(cnt[e][0])
+            if start[1] < end[1]:
+                top = start
+                bottom = end
+            else:
+                top = end
+                bottom = start
+
+            return [int(self.two_points_distance(start, end)), top[0], top[1], bottom[0], bottom[1]]
+        else:
+            return [200, 200, 200, 200, 200]
+
+
+    def two_points_distance(self, pt_a, pt_b):
+        return ((pt_a[0] - pt_b[0]) ** 2 + (pt_a[1] - pt_b[1]) ** 2) ** 0.5

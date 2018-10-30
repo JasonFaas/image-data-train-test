@@ -82,7 +82,6 @@ for c_param in [1]:
                     print(image[28*28:])
                     image = np.reshape(image[0:28*28], (-1, 28, 1))
                     image.astype(np.uint8)
-                    print(image.shape)
                     cv.imshow("failure", image)
                     if cv.waitKey(0) & 0xFF == ord('q'):
                         break
