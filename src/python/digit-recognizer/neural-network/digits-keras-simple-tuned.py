@@ -23,13 +23,13 @@ train_csv = 'jason_train_5000.csv'
 # train_csv = 'jason_train_2000.csv'
 # train_csv = 'jason_train_1000.csv'
 
-train_csv_filename = '%s/%s' % (resources, train_csv)
-test_csv_filename = '%s/%s' % (resources, test_csv)
+train_csv_filename = resources + train_csv
+test_csv_filename = resources + test_csv
 
 image_mod = DisplayImage()
 x_train, x_test, y_train, y_test = image_mod.train_test_set(train_file=train_csv_filename,
-                                                        train_size=.8,
-                                                        random_state=10)
+                                                            train_size=.8,
+                                                            random_state=10)
 # x_train, x_test, y_train, y_test = DisplayImage().train_test_set(train_file=train_csv_filename,
 #                                                                  train_size=1.0,
 #                                                                  test_file=test_csv_filename)
