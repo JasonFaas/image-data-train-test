@@ -10,15 +10,17 @@ from keras.callbacks import EarlyStopping
 
 from image_test_space import DisplayImage
 
+import cv2 as cv
+
 
 resources = '../../../resources/digit-recognizer/'
 
 # test_csv = 'test.csv'
 test_csv = 'jason_test_1000.csv'
 
-train_csv = 'train.csv'
+# train_csv = 'train.csv'
 # train_csv = 'jason_train_10000.csv'
-# train_csv = 'jason_train_5000.csv'
+train_csv = 'jason_train_5000.csv'
 # train_csv = 'jason_train_4000.csv'
 # train_csv = 'jason_train_2000.csv'
 # train_csv = 'jason_train_1000.csv'
@@ -39,10 +41,16 @@ x_train, x_test, y_train, y_test = image_mod.train_test_set(train_file=train_csv
 # x_train_v2 = model_scaler.fit_transform(x_train)
 # x_test_v2 = model_scaler.transform(x_test)
 
-x_train_v2 = list(map(lambda v: np.reshape(v, (28, 28, 1)), x_train))
-x_test_v2 = list(map(lambda v: np.reshape(v, (28, 28, 1)), x_test))
+x_train_v2 = np.array(x_train).reshape(len(x_train), 28, 28, 1)
+x_test_v2 = np.array(x_test).reshape(len(x_test), 28, 28, 1)
 
-y_train_v2 = to_categorical(y_train)
+x_train_v3 = x_train_v2.astype(np.float32)
+x_test_v3 = x_test_v2.astype(np.float32)
+
+x_train_v3 /= 255
+x_test_v3 /= 255
+
+# y_train_v2 = to_categorical(y_train)
 
 
 # learning_rates = [.0001, 0.01, 1]
@@ -55,6 +63,8 @@ dataframe = pd.DataFrame(data=np.zeros((len(layers), len(layer_sizes)), dtype=np
 print(dataframe)
 
 input_shape = (28, 28, 1)
+
+review_failures = True
 
 import tensorflow as tf
 for layer_size in layer_sizes:
@@ -70,13 +80,14 @@ for layer_size in layer_sizes:
         # early_stopping_monitor = EarlyStopping(patience=10, monitor='acc')
         model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
-        # TODO review using y_train instead of y_train_v2 (aka to_categorical)
-        model.fit(np.array(x_train_v2),
+        early_stopping_monitor = EarlyStopping(patience=10, monitor='acc')
+        model.fit(np.array(x_train_v3),
                   np.array(y_train),
-                  epochs=50,
-                  verbose=0)
+                  epochs=5,
+                  callbacks=[early_stopping_monitor],
+                  verbose=1)
 
-        predictions = model.predict(np.array(x_test_v2))
+        predictions = model.predict(np.array(x_test_v3))
         predictions = list(map(lambda v: np.argmax(np.array(v)), predictions))
 
         # scoring info
@@ -87,6 +98,19 @@ for layer_size in layer_sizes:
             score = round(nonzero / total_test, 3)
             print("\tScore: " + str(score))
             dataframe.at[layer_count, layer_size] = score
+
+            if review_failures:
+                guess_vs_actual = predictions == y_test
+                for idx, good_guess in enumerate(guess_vs_actual):
+                    if not good_guess:
+                        print("Guess " + str(predictions[idx]) + " \tActual " + str(y_test[idx]))
+                        image = x_test[idx]
+                        print(image[28 * 28:])
+                        image = np.reshape(image[0:28 * 28], (-1, 28, 1))
+                        image.astype(np.uint8)
+                        cv.imshow("failure", image)
+                        if cv.waitKey(0) & 0xFF == ord('q'):
+                            break
 
 print(dataframe)
 
