@@ -30,9 +30,32 @@ large_resources = '../../../../image-data-train-test-large-data/Coccidia/img/'
 
 images_to_review = glob.glob(large_resources + "00*" + ".jpg")
 
+x_train = []
+y_train = []
+
+
+def get_roi(xmin_org, xmax_org, ymin_org, ymax_org, pad, size, param):
+    if param[0] == 't':
+        xmin = xmin_org - pad
+        xmax = xmin + size
+    else:
+        xmax = xmax_org + pad
+        xmin = xmax - size
+        
+    if param[1] == 'l':
+        ymin = ymin_org - pad
+        ymax = ymin + size
+    else:
+        ymax = ymax_org + pad
+        ymin = ymax - size
+    return xmin, xmax, ymin, ymax
+        
+        
+min_gaus_nonzeros = 96 * 96
+
 for idx, img_filename in enumerate(images_to_review):
     base_name = img_filename[-8:-4]
-    print(base_name)
+    # print(base_name)
     xml_filename = small_resources + base_name + ".xml"
 
     img = cv.imread(img_filename)
@@ -44,82 +67,73 @@ for idx, img_filename in enumerate(images_to_review):
 
     screen_size = 96
     screen_pad = int(screen_size / 10)
-    block = 301
-    C = 50
-    print("\n")
-    print(block)
-    print(C)
+    block = 251
+    C = 45
 
     gaus = cv.adaptiveThreshold(gray, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, block, C)
-    # for rect_idx in range(len(mydoc.getElementsByTagName('xmin'))):
-    for rect_idx in range(1):
+    positive_mask = np.zeros(gray.shape)
+
+    # Log True values and build positive mask
+    for rect_idx in range(len(mydoc.getElementsByTagName('xmin'))):
         xmin_org = get_single_data_from_xml('xmin', rect_idx)
         ymin_org = get_single_data_from_xml('ymin', rect_idx)
         xmax_org = get_single_data_from_xml('xmax', rect_idx)
         ymax_org = get_single_data_from_xml('ymax', rect_idx)
-        # cv.rectangle(gaus, (xmin, ymin), (xmax, ymax), (255))
 
-        # tl_roi
-        xmin = xmin_org - screen_pad
-        xmax = xmin + screen_size
-        ymin = ymin_org - screen_pad
-        ymax = ymin + screen_size
-        if 0 <= xmin < xmax < 512 and 0 <= ymin < ymax < 512:
-            cv.rectangle(gaus, (xmin, ymin), (xmax, ymax), (255))
+        cv.rectangle(positive_mask, (xmin_org, ymin_org), (xmax_org, ymax_org), (255), -1)
 
-        # bl_roi
-        xmin = xmin_org - screen_pad
-        xmax = xmin + screen_size
-        ymax = ymax_org + screen_pad
-        ymin = ymax - screen_size
-        if 0 <= xmin < xmax < 512 and 0 <= ymin < ymax < 512:
-            cv.rectangle(gaus, (xmin, ymin), (xmax, ymax), (255))
+        for corner in ["tl", "tr", "bl", "br"]:
+            xmin, xmax, ymin, ymax = get_roi(xmin_org, xmax_org, ymin_org, ymax_org, screen_pad, screen_size, corner)
+            if xmin < 0 or xmax >= 512 or ymin < 0 or ymax >= 512:
+                xmin, xmax, ymin, ymax = get_roi(xmin_org, xmax_org, ymin_org, ymax_org, 0, screen_size, corner)
 
-        # tr_roi
-        xmax = xmax_org + screen_pad
-        xmin = xmax - screen_size
-        ymin = ymin_org - screen_pad
-        ymax = ymin + screen_size
-        if 0 <= xmin < xmax < 512 and 0 <= ymin < ymax < 512:
-            cv.rectangle(gaus, (xmin, ymin), (xmax, ymax), (255))
+            if 0 <= xmin < xmax < 512 and 0 <= ymin < ymax < 512:
+                x_train.append(img[ymin:ymax, xmin:xmax])
+                y_train.append(True)
+                nonzero = np.count_nonzero(gaus[ymin:ymax, xmin:xmax])
+                if nonzero < min_gaus_nonzeros:
+                    min_gaus_nonzeros = nonzero
 
-        # br_roi
-        xmax = xmax_org + screen_pad
-        xmin = xmax - screen_size
-        ymax = ymax_org + screen_pad
-        ymin = ymax - screen_size
-        if 0 <= xmin < xmax < 512 and 0 <= ymin < ymax < 512:
-            cv.rectangle(gaus, (xmin, ymin), (xmax, ymax), (255))
+    # cv.imshow("mask", positive_mask)
+    # cv.waitKey(0)
 
-        # c_roi
-        
-    print(img.shape)
+    # Log False values based on gaus and positive_mask
+    for xmin in range(0, 512, 64):
+        for ymin in range(0, 512, 64):
+            xmax = xmin + screen_size
+            ymax = ymin + screen_size
+            if xmax > 512:
+                xmax = 512
+                xmin = xmax - screen_size
+            if ymax > 512:
+                ymax = 512
+                ymin = ymax - screen_size
+            gaus_nonzero = np.count_nonzero(gaus[ymin:ymax, xmin:xmax])
+            positive_mask_nonzero = np.count_nonzero(positive_mask[ymin:ymax, xmin:xmax])
+
+            if gaus_nonzero > 50 and positive_mask_nonzero == 0:
+                x_train.append(img[ymin:ymax, xmin:xmax])
+                y_train.append(False)
 
 
+print(min_gaus_nonzeros)
+array = np.array(x_train)
+print(array.shape)
 
-    cv.imshow("zeros", img)
-    cv.imshow("gray", gray)
-    cv.imshow("gaus", gaus)
-    key = cv.waitKey(0) & 0xFF
-    if key == ord('q'):
-        break
+
 
 
 exit(0)
 
-# read training info
-digit_train_set = pd.read_csv(csv_filename)
-image_info = DisplayImage(csv_filename)
-digit_train_set = image_info.get_all_info()
 
 # separate training info into samples and target
-samples_v1 = digit_train_set[:, 1]
-target = digit_train_set[:, 0]
-target = target.astype(int)
-
-
-samples_v2 = list(map(lambda v: np.reshape(v, (-1)), samples_v1))
-samples_v3 = image_info.circle_info_arr(samples_v2, samples_v1)
+# samples_v1 = digit_train_set[:, 1]
+# target = digit_train_set[:, 0]
+# target = target.astype(int)
+#
+#
+# samples_v2 = list(map(lambda v: np.reshape(v, (-1)), samples_v1))
+# samples_v3 = image_info.circle_info_arr(samples_v2, samples_v1)
 
 
 
