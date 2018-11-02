@@ -77,7 +77,7 @@ class DisplayImage:
                 for corner in ["tl", "tr", "bl", "br"]:
                     xmin, xmax, ymin, ymax = self.get_roi(xmin_org, xmax_org, ymin_org, ymax_org, screen_pad,
                                                              self.screen_size, corner)
-                    if xmin < 0 or xmax >= 512 or ymin < 0 or ymax >= 512:
+                    if xmin < 0 or xmax >= self.img_size or ymin < 0 or ymax >= self.img_size:
                         xmin, xmax, ymin, ymax = self.get_roi(xmin_org, xmax_org, ymin_org, ymax_org, 0, self.screen_size,
                                                                  corner)
 
@@ -92,15 +92,15 @@ class DisplayImage:
             # cv.waitKey(0)
 
             # Log False values based on gaus and positive_mask
-            for xmin in range(0, 512, 64):
-                for ymin in range(0, 512, 64):
+            for xmin in range(0, self.img_size, 64):
+                for ymin in range(0, self.img_size, 64):
                     xmax = xmin + self.screen_size
                     ymax = ymin + self.screen_size
-                    if xmax > 512:
-                        xmax = 512
+                    if xmax > self.img_size:
+                        xmax = self.img_size
                         xmin = xmax - self.screen_size
-                    if ymax > 512:
-                        ymax = 512
+                    if ymax > self.img_size:
+                        ymax = self.img_size
                         ymin = ymax - self.screen_size
                     gaus_nonzero = np.count_nonzero(gaus[ymin:ymax, xmin:xmax])
                     positive_mask_nonzero = np.count_nonzero(positive_mask[ymin:ymax, xmin:xmax])

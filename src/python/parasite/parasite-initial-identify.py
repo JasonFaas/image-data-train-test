@@ -46,7 +46,8 @@ large_resources = '../../../../image-data-train-test-large-data/Coccidia/img/'
 images_to_review = glob.glob(large_resources + "*" + ".jpg")
 # xml_to_review = glob.glob(small_resources + "*" + ".xml")
 largest_side = 0
-smallest_area = 512 ** 2
+img_size = 512
+smallest_area = img_size ** 2
 
 for idx, img_filename in enumerate(images_to_review):
     base_name = img_filename[-8:-4]

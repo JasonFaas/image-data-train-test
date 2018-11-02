@@ -34,7 +34,8 @@ train_images, test_images, _, _ = train_test_split(images_to_review, range(0, le
 screen_size = 96
 
 # Get training data
-img_mod = DisplayImage(img_size=512, screen_size=screen_size)
+img_size = 512
+img_mod = DisplayImage(img_size=img_size, screen_size=screen_size)
 x_values, y_values = img_mod.get_training_values(train_images)
 
 x_train = np.array(x_values)
@@ -67,39 +68,43 @@ model.fit(np.array(x_train_v3),
           verbose=1)
 
 
-x_test_values = []
-y_test_values = []
+x_all_test_values = []
+y_all_test_values = []
 for img_filename in test_images:
     img = cv.imread(img_filename)
     positive_mask = img_mod.get_positive_mask(img_filename)
 
+    x_img_test_values = []
+    y_img_test_values = []
 
-    for xmin in range(0, 512, 64):
-        for ymin in range(0, 512, 64):
+    for xmin in range(0, img_size, 64):
+        for ymin in range(0, img_size, 64):
             xmax = xmin + screen_size
             ymax = ymin + screen_size
-            if xmax > 512:
-                xmax = 512
+            if xmax > img_size:
+                xmax = img_size
                 xmin = xmax - screen_size
-            if ymax > 512:
-                ymax = 512
+            if ymax > img_size:
+                ymax = img_size
                 ymin = ymax - screen_size
 
             img_roi = img[ymin:ymax, xmin:xmax]
             positive_mask_nonzero = np.count_nonzero(positive_mask[ymin:ymax, xmin:xmax])
-            y_test_values.append(positive_mask_nonzero > 300)
-            x_test_values.append(img_roi)
+            y_all_test_values.append(positive_mask_nonzero > 300)
+            x_all_test_values.append(img_roi)
+            y_img_test_values.append(positive_mask_nonzero > 300)
+            x_img_test_values.append(img_roi)
 
 
 
-x_test = np.array(x_test_values)
+x_test = np.array(x_all_test_values)
 x_test_v2 = x_test.astype(np.float32)
 x_test_v2 /= 255
 
 predictions = model.predict(np.array(x_test_v2))
 predictions = list(map(lambda v: np.argmax(np.array(v)), predictions))
 
-y_test = y_test_values
+y_test = y_all_test_values
 
 # scoring info
 if y_test is not None:
