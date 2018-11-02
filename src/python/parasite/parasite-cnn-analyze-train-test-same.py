@@ -25,97 +25,28 @@ matplotlib.use("MacOSX")
 from matplotlib import pyplot as plt
 import glob
 
-
-
-small_resources = '../../resources/parasite/label/'
+# Gather images to review
 large_resources = '../../../../image-data-train-test-large-data/Coccidia/img/'
-
-
 images_to_review = glob.glob(large_resources + "000*" + ".jpg")
-
-x_values = []
-y_values = []
-
-
-img_mod = DisplayImage()
-        
 screen_size = 96
-min_gaus_nonzeros = screen_size ** 2
 
-for idx, img_filename in enumerate(images_to_review):
-    base_name = img_filename[-8:-4]
-    # print(base_name)
-    xml_filename = small_resources + base_name + ".xml"
-
-    img = cv.imread(img_filename)
-    gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-
-
-    screen_pad = int(screen_size / 10)
-    block = 251
-    C = 45
-
-    gaus = cv.adaptiveThreshold(gray, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, block, C)
-    positive_mask = np.zeros(gray.shape)
-
-    # Log True values and build positive mask
-    for rect_idx in range(img_mod.get_rectangle_count(xml_filename)):
-        xmin_org, ymin_org, xmax_org, ymax_org = img_mod.get_data_from_xml(xml_filename,
-                                                                           rect_idx)
-
-        cv.rectangle(positive_mask, (xmin_org, ymin_org), (xmax_org, ymax_org), (255), -1)
-
-        for corner in ["tl", "tr", "bl", "br"]:
-            xmin, xmax, ymin, ymax = img_mod.get_roi(xmin_org, xmax_org, ymin_org, ymax_org, screen_pad, screen_size, corner)
-            if xmin < 0 or xmax >= 512 or ymin < 0 or ymax >= 512:
-                xmin, xmax, ymin, ymax = img_mod.get_roi(xmin_org, xmax_org, ymin_org, ymax_org, 0, screen_size, corner)
-
-            if 0 <= xmin < xmax < 512 and 0 <= ymin < ymax < 512:
-                x_values.append(img[ymin:ymax, xmin:xmax])
-                y_values.append(True)
-                nonzero = np.count_nonzero(gaus[ymin:ymax, xmin:xmax])
-                if nonzero < min_gaus_nonzeros:
-                    min_gaus_nonzeros = nonzero
-
-    # cv.imshow("mask", positive_mask)
-    # cv.waitKey(0)
-
-    # Log False values based on gaus and positive_mask
-    for xmin in range(0, 512, 64):
-        for ymin in range(0, 512, 64):
-            xmax = xmin + screen_size
-            ymax = ymin + screen_size
-            if xmax > 512:
-                xmax = 512
-                xmin = xmax - screen_size
-            if ymax > 512:
-                ymax = 512
-                ymin = ymax - screen_size
-            gaus_nonzero = np.count_nonzero(gaus[ymin:ymax, xmin:xmax])
-            positive_mask_nonzero = np.count_nonzero(positive_mask[ymin:ymax, xmin:xmax])
-
-            if gaus_nonzero > 100 and positive_mask_nonzero == 0:
-                x_values.append(img[ymin:ymax, xmin:xmax])
-                y_values.append(False)
-
+# Get training data
+img_mod = DisplayImage(screen_size=screen_size)
+x_values, y_values = img_mod.get_training_values(images_to_review)
 
 x_values = np.array(x_values)
 x_train, x_test, y_train, y_test = train_test_split(x_values,
                                                     y_values,
                                                     test_size=0.2,
                                                     random_state=10)
-# x_train_v2 = np.array(x_train).reshape(len(x_train), screen_size, screen_size, 1)
-# x_test_v2 = np.array(x_test).reshape(len(x_test), screen_size, screen_size, 1)
 
+# Cleanup data for CNN
 x_train_v3 = x_train.astype(np.float32)
 x_test_v3 = x_test.astype(np.float32)
-
 x_train_v3 /= 255
 x_test_v3 /= 255
 
 input_shape = (screen_size, screen_size, 3)
-
-
 review_failures = False
 
 model = Sequential()

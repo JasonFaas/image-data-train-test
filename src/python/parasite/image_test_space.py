@@ -5,6 +5,11 @@ from xml.dom import minidom
 
 
 class DisplayImage:
+    
+    def __init__(self, screen_size):
+        self.screen_size = screen_size
+        self.small_resources = '../../resources/parasite/label/'
+
 
     def two_points_distance(self, pt_a, pt_b):
         return ((pt_a[0] - pt_b[0]) ** 2 + (pt_a[1] - pt_b[1]) ** 2) ** 0.5
@@ -41,3 +46,68 @@ class DisplayImage:
     def get_rectangle_count(self, xml_filename):
         mydoc = minidom.parse(xml_filename)
         return len(mydoc.getElementsByTagName('xmin'))
+
+    def get_training_values(self, img_filenames):
+
+        x_values = []
+        y_values = []
+        min_gaus_nonzeros = self.screen_size ** 2
+
+        for idx, img_filename in enumerate(img_filenames):
+            base_name = img_filename[-8:-4]
+            # print(base_name)
+            xml_filename = self.small_resources + base_name + ".xml"
+
+            img = cv.imread(img_filename)
+            gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+
+            screen_pad = int(self.screen_size / 10)
+            block = 251
+            C = 45
+
+            gaus = cv.adaptiveThreshold(gray, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, block, C)
+            positive_mask = np.zeros(gray.shape)
+
+            # Log True values and build positive mask
+            for rect_idx in range(self.get_rectangle_count(xml_filename)):
+                xmin_org, ymin_org, xmax_org, ymax_org = self.get_data_from_xml(xml_filename,
+                                                                                   rect_idx)
+
+                cv.rectangle(positive_mask, (xmin_org, ymin_org), (xmax_org, ymax_org), (255), -1)
+
+                for corner in ["tl", "tr", "bl", "br"]:
+                    xmin, xmax, ymin, ymax = self.get_roi(xmin_org, xmax_org, ymin_org, ymax_org, screen_pad,
+                                                             self.screen_size, corner)
+                    if xmin < 0 or xmax >= 512 or ymin < 0 or ymax >= 512:
+                        xmin, xmax, ymin, ymax = self.get_roi(xmin_org, xmax_org, ymin_org, ymax_org, 0, self.screen_size,
+                                                                 corner)
+
+                    if 0 <= xmin < xmax < 512 and 0 <= ymin < ymax < 512:
+                        x_values.append(img[ymin:ymax, xmin:xmax])
+                        y_values.append(True)
+                        nonzero = np.count_nonzero(gaus[ymin:ymax, xmin:xmax])
+                        if nonzero < min_gaus_nonzeros:
+                            min_gaus_nonzeros = nonzero
+
+            # cv.imshow("mask", positive_mask)
+            # cv.waitKey(0)
+
+            # Log False values based on gaus and positive_mask
+            for xmin in range(0, 512, 64):
+                for ymin in range(0, 512, 64):
+                    xmax = xmin + self.screen_size
+                    ymax = ymin + self.screen_size
+                    if xmax > 512:
+                        xmax = 512
+                        xmin = xmax - self.screen_size
+                    if ymax > 512:
+                        ymax = 512
+                        ymin = ymax - self.screen_size
+                    gaus_nonzero = np.count_nonzero(gaus[ymin:ymax, xmin:xmax])
+                    positive_mask_nonzero = np.count_nonzero(positive_mask[ymin:ymax, xmin:xmax])
+
+                    if gaus_nonzero > 100 and positive_mask_nonzero == 0:
+                        x_values.append(img[ymin:ymax, xmin:xmax])
+                        y_values.append(False)
+                        
+        return x_values, y_values
