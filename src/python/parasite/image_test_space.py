@@ -6,7 +6,8 @@ from xml.dom import minidom
 
 class DisplayImage:
     
-    def __init__(self, screen_size):
+    def __init__(self, img_size, screen_size):
+        self.img_size = img_size
         self.screen_size = screen_size
         self.small_resources = '../../resources/parasite/label/'
 
@@ -54,9 +55,7 @@ class DisplayImage:
         min_gaus_nonzeros = self.screen_size ** 2
 
         for idx, img_filename in enumerate(img_filenames):
-            base_name = img_filename[-8:-4]
-            # print(base_name)
-            xml_filename = self.small_resources + base_name + ".xml"
+            xml_filename = self.get_xml_filename(img_filename)
 
             img = cv.imread(img_filename)
             gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
@@ -111,3 +110,18 @@ class DisplayImage:
                         y_values.append(False)
                         
         return x_values, y_values
+
+    def get_xml_filename(self, img_filename):
+        base_name = img_filename[-8:-4]
+        # print(base_name)
+        xml_filename = self.small_resources + base_name + ".xml"
+        return xml_filename
+
+    def get_positive_mask(self, img_filename):
+        positive_mask = np.zeros((self.img_size, self.img_size, 1), np.uint8)
+        xml_filename = self.get_xml_filename(img_filename)
+        for rect_idx in range(self.get_rectangle_count(xml_filename)):
+            xmin_org, ymin_org, xmax_org, ymax_org = self.get_data_from_xml(xml_filename,
+                                                                            rect_idx)
+            cv.rectangle(positive_mask, (xmin_org, ymin_org), (xmax_org, ymax_org), (255), -1)
+        return positive_mask
