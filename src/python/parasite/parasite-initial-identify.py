@@ -66,22 +66,27 @@ for idx, img_filename in enumerate(images_to_review):
 
     import random
     while True:
-        block = random.randint(150,201) * 2 + 1
-        C = random.randint(55, 60)
+        block = random.randint(3,50) * 2 + 1
+        C = random.randint(25, 50)
+        s1 = random.randint(30,100)
+        s2 = random.randint(50,200)
         print("\n")
         print(block)
         print(C)
+        print(s1)
+        print(s2)
 
-        gaus = cv.adaptiveThreshold(gray, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, block, C)
+        img_bf = cv.bilateralFilter(img, block, s1, s2)
+
+        gaus = cv.bilateralFilter(gray, 11, s1, s2)
+        mean = cv.adaptiveThreshold(gaus, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY_INV, block, C)
         for rect_idx in range(len(mydoc.getElementsByTagName('xmin'))):
             xmin = get_single_data_from_xml('xmin', rect_idx)
             ymin = get_single_data_from_xml('ymin', rect_idx)
             xmax = get_single_data_from_xml('xmax', rect_idx)
             ymax = get_single_data_from_xml('ymax', rect_idx)
             cv.rectangle(gray, (xmin, ymin), (xmax, ymax), (255))
-            cv.rectangle(red, (xmin, ymin), (xmax, ymax), (255))
-            cv.rectangle(gre, (xmin, ymin), (xmax, ymax), (255))
-            cv.rectangle(blu, (xmin, ymin), (xmax, ymax), (255))
+            cv.rectangle(mean, (xmin, ymin), (xmax, ymax), (255))
             cv.rectangle(gaus, (xmin, ymin), (xmax, ymax), (255))
             if xmax - xmin > largest_side:
                 largest_side = xmax - xmin
@@ -95,10 +100,9 @@ for idx, img_filename in enumerate(images_to_review):
 
         cv.imshow("zeros", img)
         cv.imshow("gray", gray)
-        cv.imshow("red", red)
-        cv.imshow("gre", gre)
-        cv.imshow("blu", blu)
+        cv.imshow("mean", mean)
         cv.imshow("gaus", gaus)
+        cv.imshow("img_bf", img_bf)
         key = cv.waitKey(0) & 0xFF
         if key == ord('q'):
             break
