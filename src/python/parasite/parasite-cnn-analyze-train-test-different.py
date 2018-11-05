@@ -24,6 +24,10 @@ matplotlib.use("MacOSX")
 from matplotlib import pyplot as plt
 import glob
 
+print("Is there a GPU available: "),
+print(tf.test.is_gpu_available())
+
+
 # Gather images to review
 large_resources = '../../../../image-data-train-test-large-data/Coccidia/img/'
 images_to_review = glob.glob(large_resources + "0*" + ".jpg")
@@ -56,31 +60,33 @@ new_model = False
 model_save_name = "model_save_v1_0xxx.h5"
 if new_model:
 
-    model = Sequential()
-    # TODO investigate kernel_size here
-    model.add(Conv2D(8, kernel_size=(3,3), input_shape=input_shape))
+    model = tf.keras.models.Sequential([
+        tf.keras.layers.Conv2D(8, kernel_size=(3,3), input_shape=input_shape),
 
-    model.add(Conv2D(8, kernel_size=(3,3), activation='relu'))
-    model.add(MaxPooling2D(pool_size=(2,2)))
+        tf.keras.layers.Conv2D(8, kernel_size=(3,3), activation=tf.nn.relu),
+        tf.keras.layers.MaxPooling2D(pool_size=(2,2)),
 
-    model.add(Conv2D(16, kernel_size=(3,3), activation='relu'))
-    model.add(Conv2D(16, kernel_size=(3,3), activation='relu'))
-    model.add(MaxPooling2D(pool_size=(2,2)))
+        tf.keras.layers.Conv2D(16, kernel_size=(3,3), activation=tf.nn.relu),
+        tf.keras.layers.Conv2D(16, kernel_size=(3,3), activation=tf.nn.relu),
+        tf.keras.layers.MaxPooling2D(pool_size=(2,2)),
 
-    model.add(Conv2D(32, kernel_size=(3,3), activation='relu'))
-    model.add(Conv2D(32, kernel_size=(3,3), activation='relu'))
-    model.add(MaxPooling2D(pool_size=(2,2)))
+        tf.keras.layers.Conv2D(32, kernel_size=(3,3), activation=tf.nn.relu),
+        tf.keras.layers.Conv2D(32, kernel_size=(3,3), activation=tf.nn.relu),
+        tf.keras.layers.MaxPooling2D(pool_size=(2,2)),
 
-    model.add(Conv2D(64, kernel_size=(3,3), activation='relu'))
-    model.add(Conv2D(64, kernel_size=(3,3), activation='relu'))
-    model.add(MaxPooling2D(pool_size=(2,2)))
+        tf.keras.layers.Conv2D(64, kernel_size=(3,3), activation=tf.nn.relu),
+        tf.keras.layers.Conv2D(64, kernel_size=(3,3), activation=tf.nn.relu),
+        tf.keras.layers.MaxPooling2D(pool_size=(2,2)),
 
-    model.add(Flatten())
-    model.add(Dense(64, activation=tf.nn.relu))
-    model.add(Dropout(0.2))
-    model.add(Dense(2, activation=tf.nn.softmax))
+        tf.keras.layers.Flatten(),
+        tf.keras.layers.Dense(64, activation=tf.nn.relu),
+        tf.keras.layers.Dropout(0.2),
+        tf.keras.layers.Dense(2, activation=tf.nn.softmax)
+    ])
 
-    model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+    model.compile(optimizer=tf.keras.optimizers.Adam(),
+                  loss=tf.keras.losses.sparse_categorical_crossentropy,
+                  metrics=['accuracy'])
 
     early_stopping_monitor = EarlyStopping(patience=10, monitor='acc')
     model.fit(np.array(x_train_v3),

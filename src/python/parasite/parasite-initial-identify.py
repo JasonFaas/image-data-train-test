@@ -46,6 +46,7 @@ large_resources = '../../../../image-data-train-test-large-data/Coccidia/img/'
 images_to_review = glob.glob(large_resources + "*" + ".jpg")
 # xml_to_review = glob.glob(small_resources + "*" + ".xml")
 largest_side = 0
+smallest_side = 512
 img_size = 512
 smallest_area = img_size ** 2
 
@@ -92,6 +93,10 @@ for idx, img_filename in enumerate(images_to_review):
                 largest_side = xmax - xmin
             if ymax - ymin > largest_side:
                 largest_side = ymax - ymin
+            if xmax - xmin < smallest_side:
+                smallest_side = xmax - xmin
+            if ymax - ymin < smallest_side:
+                smallest_side = ymax - ymin
             if (xmax - xmin) * (ymax - ymin) < smallest_area:
                 smallest_area = (xmax - xmin) * (ymax - ymin)
         print(img.shape)
@@ -103,16 +108,18 @@ for idx, img_filename in enumerate(images_to_review):
         cv.imshow("mean", mean)
         cv.imshow("gaus", gaus)
         cv.imshow("img_bf", img_bf)
-        key = cv.waitKey(0) & 0xFF
-        if key == ord('q'):
-            break
-        elif key == ord('s'):
-            break
-    if key == ord('q'):
+        # key = cv.waitKey(1) & 0xFF
+        # if key == ord('q'):
+        #     break
+        # elif key == ord('s'):
+        #     break
         break
+    # if key == ord('q'):
+    #     break
 
 
 print("Largest_side:" + str(largest_side))
+print("Smallest_side:" + str(smallest_side))
 print("Smallest_area:" + str(smallest_area))
 exit(0)
 

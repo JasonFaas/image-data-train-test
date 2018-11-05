@@ -10,6 +10,7 @@ class DisplayImage:
         self.img_size = img_size
         self.screen_size = screen_size
         self.small_resources = '../../resources/parasite/label/'
+        self.display_image_creation = False
 
 
     def two_points_distance(self, pt_a, pt_b):
@@ -49,7 +50,6 @@ class DisplayImage:
         return len(mydoc.getElementsByTagName('xmin'))
 
     def get_training_values(self, img_filenames):
-
         x_values = []
         y_values = []
         min_gaus_nonzeros = self.screen_size ** 2
@@ -58,6 +58,8 @@ class DisplayImage:
             xml_filename = self.get_xml_filename(img_filename)
 
             img = cv.imread(img_filename)
+            if self.display_image_creation:
+                img_display = img.copy()
             gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
 
             screen_pad = int(self.screen_size / 10)
@@ -87,6 +89,8 @@ class DisplayImage:
                         nonzero = np.count_nonzero(gaus[ymin:ymax, xmin:xmax])
                         if nonzero < min_gaus_nonzeros:
                             min_gaus_nonzeros = nonzero
+                        if self.display_image_creation:
+                            cv.rectangle(img_display, (xmin, ymin), (xmax, ymax), (255, 255, 0))
 
             # cv.imshow("mask", positive_mask)
             # cv.waitKey(0)
@@ -108,6 +112,13 @@ class DisplayImage:
                     if gaus_nonzero > 100 and positive_mask_nonzero == 0:
                         x_values.append(img[ymin:ymax, xmin:xmax])
                         y_values.append(False)
+                        if self.display_image_creation:
+                            cv.rectangle(img_display, (xmin, ymin), (xmax, ymax), (255, 0, 255))
+            if self.display_image_creation:
+                cv.imshow("display_img", img_display)
+                cv.imshow("zeros", positive_mask)
+                cv.waitKey(0)
+
                         
         return x_values, y_values
 
