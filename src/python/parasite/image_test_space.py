@@ -4,13 +4,25 @@ import pandas as pd
 from xml.dom import minidom
 
 
+
+
 class DisplayImage:
     
     def __init__(self, img_size, screen_size):
         self.img_size = img_size
         self.screen_size = screen_size
         self.small_resources = '../../resources/parasite/label/'
-        self.display_image_creation = False
+        self.display_image_creation = True
+        self.off_center = 0
+        if screen_size == 16:
+            self.screen_pad = 3
+        elif screen_size == 32:
+            self.screen_pad = 10
+        elif screen_size == 96:
+            self.screen_pad = int(self.screen_size / 10)
+        else:
+            print("screen_size error")
+            exit(0)
 
 
     def two_points_distance(self, pt_a, pt_b):
@@ -29,6 +41,25 @@ class DisplayImage:
             ymax = ymin + size
         else:
             ymax = ymax_org + pad
+            ymin = ymax - size
+        return xmin, xmax, ymin, ymax
+
+    def get_roi_v2(self, xmin_org, xmax_org, ymin_org, ymax_org, pad, size, param):
+        mid_x = int(xmin_org + (xmax_org - xmin_org) / 2)
+        mid_y = int(ymin_org + (ymax_org - ymin_org) / 2)
+
+        if param[0] == 't':
+            xmin = mid_x - pad
+            xmax = xmin + size
+        else:
+            xmax = mid_x + pad
+            xmin = xmax - size
+
+        if param[1] == 'l':
+            ymin = mid_y - pad
+            ymax = ymin + size
+        else:
+            ymax = mid_y + pad
             ymin = ymax - size
         return xmin, xmax, ymin, ymax
 
@@ -62,7 +93,6 @@ class DisplayImage:
                 img_display = img.copy()
             gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
 
-            screen_pad = int(self.screen_size / 10)
             block = 251
             C = 45
 
@@ -77,13 +107,18 @@ class DisplayImage:
                 cv.rectangle(positive_mask, (xmin_org, ymin_org), (xmax_org, ymax_org), (255), -1)
 
                 for corner in ["tl", "tr", "bl", "br"]:
-                    xmin, xmax, ymin, ymax = self.get_roi(xmin_org, xmax_org, ymin_org, ymax_org, screen_pad,
-                                                             self.screen_size, corner)
+                    xmin, xmax, ymin, ymax = self.get_roi_v2(xmin_org,
+                                                             xmax_org,
+                                                             ymin_org,
+                                                             ymax_org,
+                                                             self.screen_pad,
+                                                             self.screen_size,
+                                                             corner)
                     if xmin < 0 or xmax >= self.img_size or ymin < 0 or ymax >= self.img_size:
-                        xmin, xmax, ymin, ymax = self.get_roi(xmin_org, xmax_org, ymin_org, ymax_org, 0, self.screen_size,
-                                                                 corner)
-
-                    if 0 <= xmin < xmax < 512 and 0 <= ymin < ymax < 512:
+                        self.off_center += 1
+                        print("off center" + str(self.off_center))
+                        continue
+                    else:
                         x_values.append(img[ymin:ymax, xmin:xmax])
                         y_values.append(True)
                         nonzero = np.count_nonzero(gaus[ymin:ymax, xmin:xmax])
@@ -96,20 +131,17 @@ class DisplayImage:
             # cv.waitKey(0)
 
             # Log False values based on gaus and positive_mask
-            for xmin in range(0, self.img_size, 64):
-                for ymin in range(0, self.img_size, 64):
+            for xmin in range(0, self.img_size, self.screen_size):
+                for ymin in range(0, self.img_size, self.screen_size):
                     xmax = xmin + self.screen_size
                     ymax = ymin + self.screen_size
-                    if xmax > self.img_size:
-                        xmax = self.img_size
-                        xmin = xmax - self.screen_size
-                    if ymax > self.img_size:
-                        ymax = self.img_size
-                        ymin = ymax - self.screen_size
+                    if xmax > self.img_size or ymax > self.img_size:
+                        print("\n\nOut of bound help\n")
                     gaus_nonzero = np.count_nonzero(gaus[ymin:ymax, xmin:xmax])
                     positive_mask_nonzero = np.count_nonzero(positive_mask[ymin:ymax, xmin:xmax])
 
-                    if gaus_nonzero > 100 and positive_mask_nonzero == 0:
+                    if (self.in_corner(xmin, ymin, xmax, ymax) or gaus_nonzero > self.screen_size * 2) \
+                            and positive_mask_nonzero == 0:
                         x_values.append(img[ymin:ymax, xmin:xmax])
                         y_values.append(False)
                         if self.display_image_creation:
@@ -117,7 +149,8 @@ class DisplayImage:
             if self.display_image_creation:
                 cv.imshow("display_img", img_display)
                 cv.imshow("zeros", positive_mask)
-                cv.waitKey(0)
+                if cv.waitKey(0) & 0xFF == ord('q'):
+                    self.display_image_creation = False
 
                         
         return x_values, y_values
@@ -136,3 +169,12 @@ class DisplayImage:
                                                                             rect_idx)
             cv.rectangle(positive_mask, (xmin_org, ymin_org), (xmax_org, ymax_org), (255), -1)
         return positive_mask
+
+
+    def in_corner(self, xmin, ymin, xmax, ymax):
+        corners = []
+        corners.append(xmin == 0)
+        corners.append(ymin == 0)
+        corners.append(xmax == self.img_size)
+        corners.append(ymax == self.img_size)
+        return np.count_nonzero(corners) > 1
