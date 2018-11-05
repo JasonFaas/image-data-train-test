@@ -123,7 +123,7 @@ for img_filename in test_images:
 
             img_roi = img[ymin:ymax, xmin:xmax]
             positive_mask_nonzero = np.count_nonzero(positive_mask[ymin:ymax, xmin:xmax])
-            y_value = positive_mask_nonzero > screen_size ** 2 / 2
+            y_value = positive_mask_nonzero > screen_size ** 2 / 3
             y_all_test_values.append(y_value)
             x_all_test_values.append(img_roi)
             y_img_nuance.append(positive_mask_nonzero > screen_size ** 2 / 10)
