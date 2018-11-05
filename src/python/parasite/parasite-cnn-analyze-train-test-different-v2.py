@@ -42,6 +42,7 @@ train_images, test_images, _, _ = train_test_split(images_to_review,
 
 screen_size = 32
 img_size = 512
+zeros_mask = np.zeros((img_size, img_size, 1), dtype=np.uint8)
 img_mod = DisplayImage(img_size=img_size, screen_size=screen_size)
 
 model_save_name = "model_save_v2_%sx.h5" % base_train
@@ -107,6 +108,8 @@ y_all_test_values = []
 for img_filename in test_images:
     img = cv.imread(img_filename)
     positive_mask = img_mod.get_positive_mask(img_filename)
+    good_result = np.zeros(positive_mask.shape, dtype=positive_mask.dtype)
+    bad_result = np.zeros(positive_mask.shape, dtype=positive_mask.dtype)
 
     y_img_nuance = []
     x_img_test_values = []
@@ -142,6 +145,7 @@ for img_filename in test_images:
 
         idx = -1
         img_display = img.copy()
+        img_display_2 = img.copy()
         for xmin in range(0, img_size, test_step_size):
             for ymin in range(0, img_size, test_step_size):
                 idx += 1
@@ -153,13 +157,20 @@ for img_filename in test_images:
                     continue
                 if predictions[idx] and y_img_test_values[idx]:
                     cv.rectangle(img_display, (xmin, ymin), (xmax, ymax), (0, 255, 0), thickness=2)
+                    cv.rectangle(good_result, (xmin, ymin), (xmax, ymax), (255), thickness=-1)
                 if predictions[idx] and not (y_img_test_values[idx] or y_img_nuance[idx]):
                     cv.rectangle(img_display, (xmin, ymin), (xmax, ymax), (0, 255, 255), thickness=2)
+                    cv.rectangle(bad_result, (xmin, ymin), (xmax, ymax), (255), thickness=-1)
                 if not predictions[idx] and y_img_test_values[idx]:
                     cv.rectangle(img_display, (xmin, ymin), (xmax, ymax), (0, 0, 255), thickness=2)
 
+
         cv.imshow("img_display", img_display)
         cv.imshow("positive_mask", positive_mask)
+        cv.imshow("result_zeros", good_result)
+        good_ex = cv.morphologyEx(good_result, cv.MORPH_GRADIENT, np.ones((5, 5)))
+        bad_ex = cv.morphologyEx(bad_result, cv.MORPH_GRADIENT, np.ones((5, 5)))
+        cv.imshow("5_final", cv.add(img_display_2, cv.merge((zeros_mask, good_ex, bad_ex))))
         if cv.waitKey(0) & 0xFF == ord('q'):
             break
 
